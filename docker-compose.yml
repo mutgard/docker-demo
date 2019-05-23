@@ -27,7 +27,7 @@ services:
     ports: 
       - "3306:3306"
   adminer:
-    build: './adminer'
+    image: adminer
     ports:
       - "8181:8080"
     networks:
