@@ -7,8 +7,8 @@ services:
     volumes:
       - ./src/:/var/www/html/
     env_file: src/.env
-  apache:
-    build: './config/apache/'
+  nginx:
+    build: './config/nginx/'
     depends_on:
       - php
       - mysql
@@ -18,7 +18,7 @@ services:
     ports:
       - "8080:80"
     volumes:
-      - ./public_html/:/var/www/html/
+      - ./src/:/var/www/html/
   mysql:
     build: './config/mysql/'
     networks:
