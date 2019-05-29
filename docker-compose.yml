@@ -1,13 +1,14 @@
 version: "3.2"
 services:
   php:
-    build: './php/'
+    build: './config/php/'
     networks:
       - backend
     volumes:
-      - ./public_html/:/var/www/html/
+      - ./src/:/var/www/html/
+    env_file: src/.env
   apache:
-    build: './apache/'
+    build: './config/apache/'
     depends_on:
       - php
       - mysql
@@ -19,7 +20,7 @@ services:
     volumes:
       - ./public_html/:/var/www/html/
   mysql:
-    build: './mysql/'
+    build: './config/mysql/'
     networks:
       - backend
     environment:
