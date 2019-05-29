@@ -1,6 +1,7 @@
 version: "3.2"
 services:
   php:
+    container_name: php
     build: './config/php/'
     networks:
       - backend
@@ -8,6 +9,7 @@ services:
       - ./src/:/var/www/html/
     env_file: src/.env
   nginx:
+    container_name: nginx
     build: './config/nginx/'
     depends_on:
       - php
@@ -20,6 +22,7 @@ services:
     volumes:
       - ./src/:/var/www/html/
   mysql:
+    container_name: mysql
     build: './config/mysql/'
     networks:
       - backend
@@ -28,6 +31,7 @@ services:
     ports: 
       - "3306:3306"
   adminer:
+    container_name: adminer
     image: adminer
     ports:
       - "8181:8080"
