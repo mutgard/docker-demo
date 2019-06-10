@@ -6,7 +6,7 @@ $user = 'root';
 $pass = 'rootpassword';
 $db = 'usuaris';
 $conn = new mysqli($host, $user, $pass, $db);
-
+// This message is to test the auto-changelog
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 } 
