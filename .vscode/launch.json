@@ -23,7 +23,7 @@
             "type": "php",
             "request": "launch",
             "pathMappings": {
-                "/var/www/html": "/Users/roger/Documents/docker-demo/src"
+                "/var/www/html": "${workspaceRoot}/src"
             },
             "port": 9000
         }
