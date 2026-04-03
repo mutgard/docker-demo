@@ -599,7 +599,7 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8765))
+    port = int(os.environ.get("PORT", 8080))
     print(f"Dashboard running → http://localhost:{port}")
     print("Reads live from atelier/ — just refresh to update.")
     print("Ctrl+C to stop.\n")
