@@ -1,6 +1,6 @@
-# Atelier Wiki
+# Juliette by Julia Arnau — Wiki
 
-Welcome to the knowledge base for the bridal atelier. This wiki is maintained by Claude and serves as the single source of truth for all operations.
+Welcome to the knowledge base for Juliette by Julia Arnau. This wiki is maintained by Claude and serves as the single source of truth for all operations.
 
 ## Structure
 
