@@ -85,6 +85,13 @@ def load_appointments():
         })
     return appts
 
+def _parse_eur(s):
+    """Parse '€1,234.50' or '€1234' to float, return 0.0 on failure."""
+    try:
+        return float(re.sub(r"[€,\s]", "", s))
+    except Exception:
+        return 0.0
+
 def load_finances():
     invoices = []
     inv_dir = ROOT / "finances" / "invoices"
@@ -94,14 +101,116 @@ def load_finances():
         text = f.read_text()
         client_m = re.search(r"\[\[clients/(.+?)/", text)
         client = client_m.group(1).replace("-", " ").title() if client_m else ""
+        # Total is in a table row: | **Total** | €3,200 |
+        total_m = re.search(r"\|\s*\*\*Total\*\*\s*\|\s*€([\d,]+(?:\.\d+)?)\s*\|", text)
+        total = float(total_m.group(1).replace(",", "")) if total_m else 0.0
+        paid  = _parse_eur(field(text, "Total paid"))
+        # Parse individual payment rows: | YYYY-MM-DD | method | €amount | notes |
+        payments = []
+        for row in re.finditer(
+            r"\|\s*(\d{4}-\d{2}-\d{2})\s*\|\s*([^|]+?)\s*\|\s*€([\d,]+(?:\.\d+)?)\s*\|",
+            text,
+        ):
+            payments.append({
+                "date":   row.group(1),
+                "method": row.group(2).strip(),
+                "amount": float(row.group(3).replace(",", "")),
+            })
+        # Status checkboxes
+        status = {
+            "deposit": bool(re.search(r"\[x\]\s*Deposit", text, re.IGNORECASE)),
+            "balance": bool(re.search(r"\[x\]\s*Balance", text, re.IGNORECASE)),
+            "receipt": bool(re.search(r"\[x\]\s*Receipt", text, re.IGNORECASE)),
+        }
         invoices.append({
-            "id": f.stem,
-            "client": client,
-            "total": field(text, "Total"),
-            "paid": field(text, "Total paid"),
-            "outstanding": field(text, "Balance outstanding"),
+            "id":           f.stem,
+            "client":       client,
+            "invoice_date": field(text, "Invoice date"),
+            "due_date":     field(text, "Due date"),
+            "total":        total,
+            "paid":         paid,
+            "outstanding":  total - paid,
+            "payments":     payments,
+            "status":       status,
         })
     return invoices
+
+def load_expenses():
+    expenses = []
+    exp_dir = ROOT / "finances" / "expenses"
+    if not exp_dir.exists():
+        return expenses
+    for f in sorted(exp_dir.glob("*.md")):
+        if f.name.startswith("_"):
+            continue
+        text = f.read_text()
+        deductible_raw = field(text, "Deductible").lower()
+        expenses.append({
+            "date":          field(text, "Date"),
+            "category":      field(text, "Category").lower(),
+            "description":   field(text, "Description"),
+            "amount_ex_iva": _parse_eur(field(text, "Amount (ex-IVA)")),
+            "iva_rate":      int(re.sub(r"[^\d]", "", field(text, "IVA rate") or "0") or 0),
+            "iva_amount":    _parse_eur(field(text, "IVA amount")),
+            "total":         _parse_eur(field(text, "Total")),
+            "method":        field(text, "Payment method"),
+            "supplier":      field(text, "Supplier"),
+            "deductible":    deductible_raw == "yes",
+        })
+    return expenses
+
+def quarter_for_date(date_str):
+    """Return (year_str, quarter_int) for a YYYY-MM-DD string."""
+    try:
+        month = int(date_str[5:7])
+        year  = date_str[:4]
+        return year, (month - 1) // 3 + 1
+    except Exception:
+        return None, None
+
+def tax_summary(invoices, expenses, year, quarter):
+    """Compute IVA (Modelo 303) and IRPF (Modelo 130) for one quarter."""
+    IVA_RATE = 0.21
+
+    # Income: sum payments received in this quarter
+    income_total = 0.0  # IVA-inclusive
+    for inv in invoices:
+        for pmt in inv["payments"]:
+            y, q = quarter_for_date(pmt["date"])
+            if y == str(year) and q == quarter:
+                income_total += pmt["amount"]
+
+    income_base       = income_total / (1 + IVA_RATE)
+    iva_repercutido   = income_total - income_base
+
+    # Expenses: sum deductible expenses in this quarter
+    expenses_base    = 0.0
+    iva_soportado    = 0.0
+    for exp in expenses:
+        y, q = quarter_for_date(exp["date"])
+        if y == str(year) and q == quarter and exp["deductible"]:
+            expenses_base += exp["amount_ex_iva"]
+            iva_soportado += exp["iva_amount"]
+
+    iva_a_pagar  = max(0.0, iva_repercutido - iva_soportado)
+    net_income   = income_base - expenses_base
+    irpf_a_pagar = max(0.0, net_income * 0.20)
+
+    quarter_ends = {1: "03", 2: "06", 3: "09", 4: "12"}
+    due_months   = {1: f"{year}-04-20", 2: f"{year}-07-20",
+                    3: f"{year}-10-20", 4: f"{int(year)+1}-01-20"}
+
+    return {
+        "income_total":    income_total,
+        "income_base":     income_base,
+        "iva_repercutido": iva_repercutido,
+        "expenses_base":   expenses_base,
+        "iva_soportado":   iva_soportado,
+        "iva_a_pagar":     iva_a_pagar,
+        "net_income":      net_income,
+        "irpf_a_pagar":    irpf_a_pagar,
+        "due_date":        due_months[quarter],
+    }
 
 def load_inbox():
     messages = []
@@ -121,6 +230,266 @@ def load_inbox():
 
 
 # ── HTML ──────────────────────────────────────────────────────────────────────
+
+CATEGORY_COLORS = {
+    "fabric":       ("#FEF3C7", "#D97706"),
+    "tools":        ("#DBEAFE", "#1D4ED8"),
+    "studio":       ("#F3E8FF", "#7C3AED"),
+    "marketing":    ("#FCE7F3", "#DB2777"),
+    "professional": ("#D1FAE5", "#059669"),
+    "other":        ("#F3F4F6", "#6B7280"),
+}
+
+def _fmt_eur(n):
+    return f"€{n:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+def _days_until(date_str):
+    try:
+        d = datetime.strptime(date_str, "%Y-%m-%d").date()
+        return (d - date.today()).days
+    except Exception:
+        return 999
+
+def render_finances_html(invoices, expenses):
+    today_year  = date.today().year
+    today_month = date.today().month
+    current_q   = (today_month - 1) // 3 + 1
+
+    # ── YTD totals ────────────────────────────────────────────────────────────
+    ytd_income = sum(
+        pmt["amount"]
+        for inv in invoices
+        for pmt in inv["payments"]
+        if pmt["date"][:4] == str(today_year)
+    )
+    ytd_income_base = ytd_income / 1.21
+    ytd_expenses = sum(
+        e["total"] for e in expenses if e["date"][:4] == str(today_year)
+    )
+    ytd_expenses_base = sum(
+        e["amount_ex_iva"] for e in expenses if e["date"][:4] == str(today_year)
+    )
+    ytd_net = ytd_income_base - ytd_expenses_base
+    outstanding = sum(inv["outstanding"] for inv in invoices)
+
+    # ── Current quarter tax ───────────────────────────────────────────────────
+    cur_tax = tax_summary(invoices, expenses, today_year, current_q)
+    days_left = _days_until(cur_tax["due_date"])
+    urgent = days_left <= 15
+
+    # ── Summary strip ─────────────────────────────────────────────────────────
+    summary_html = f"""
+    <div class="fin-summary">
+      <div class="fin-stat">
+        <div class="fin-stat-num" style="color:#059669">{_fmt_eur(ytd_income_base)}</div>
+        <div class="fin-stat-label">Ingresos netos {today_year}</div>
+      </div>
+      <div class="fin-stat">
+        <div class="fin-stat-num" style="color:#DC2626">{_fmt_eur(ytd_expenses_base)}</div>
+        <div class="fin-stat-label">Gastos netos {today_year}</div>
+      </div>
+      <div class="fin-stat">
+        <div class="fin-stat-num">{_fmt_eur(ytd_net)}</div>
+        <div class="fin-stat-label">Resultado neto</div>
+      </div>
+      <div class="fin-stat">
+        <div class="fin-stat-num" style="color:#D97706">{_fmt_eur(outstanding)}</div>
+        <div class="fin-stat-label">Pendiente cobro</div>
+      </div>
+    </div>"""
+
+    # ── Tax alert box ─────────────────────────────────────────────────────────
+    q_labels = {1: "T1 (ene–mar)", 2: "T2 (abr–jun)", 3: "T3 (jul–sep)", 4: "T4 (oct–dic)"}
+    urgent_cls = " urgent" if urgent else ""
+    days_msg = (
+        f'<span style="color:#DC2626;font-weight:600">Vence en {days_left} días</span>'
+        if urgent
+        else f"Vence el {cur_tax['due_date']}"
+    )
+    tax_html = f"""
+    <div class="tax-box{urgent_cls}">
+      <div class="tax-box-header">
+        <span class="tax-q-label">{q_labels[current_q]} — Impuestos estimados</span>
+        <span class="tax-due">{days_msg}</span>
+      </div>
+      <div class="tax-grid">
+        <div class="tax-item">
+          <div class="tax-model">Modelo 303</div>
+          <div class="tax-name">IVA a ingresar</div>
+          <div class="tax-amount">{_fmt_eur(cur_tax['iva_a_pagar'])}</div>
+          <div class="tax-detail">Repercutido {_fmt_eur(cur_tax['iva_repercutido'])} − Soportado {_fmt_eur(cur_tax['iva_soportado'])}</div>
+        </div>
+        <div class="tax-item">
+          <div class="tax-model">Modelo 130</div>
+          <div class="tax-name">IRPF a ingresar</div>
+          <div class="tax-amount">{_fmt_eur(cur_tax['irpf_a_pagar'])}</div>
+          <div class="tax-detail">20% sobre rendimiento neto {_fmt_eur(cur_tax['net_income'])}</div>
+        </div>
+        <div class="tax-item">
+          <div class="tax-model">Base</div>
+          <div class="tax-name">Ingresos cobrados</div>
+          <div class="tax-amount">{_fmt_eur(cur_tax['income_base'])}</div>
+          <div class="tax-detail">IVA incluido: {_fmt_eur(cur_tax['income_total'])}</div>
+        </div>
+        <div class="tax-item">
+          <div class="tax-model">Gastos</div>
+          <div class="tax-name">Gastos deducibles</div>
+          <div class="tax-amount">{_fmt_eur(cur_tax['expenses_base'])}</div>
+          <div class="tax-detail">IVA soportado: {_fmt_eur(cur_tax['iva_soportado'])}</div>
+        </div>
+      </div>
+    </div>"""
+
+    # ── Quarterly breakdown ────────────────────────────────────────────────────
+    q_rows = ""
+    for q in range(1, 5):
+        qt = tax_summary(invoices, expenses, today_year, q)
+        dim = "" if q <= current_q else ' style="opacity:.45"'
+        q_rows += f"""
+        <tr{dim}>
+          <td>{q_labels[q]}</td>
+          <td class="num">{_fmt_eur(qt['income_base'])}</td>
+          <td class="num">{_fmt_eur(qt['expenses_base'])}</td>
+          <td class="num">{_fmt_eur(qt['net_income'])}</td>
+          <td class="num">{_fmt_eur(qt['iva_a_pagar'])}</td>
+          <td class="num">{_fmt_eur(qt['irpf_a_pagar'])}</td>
+        </tr>"""
+
+    quarterly_html = f"""
+    <h2 class="section-label" style="margin-top:28px">Resumen trimestral {today_year}</h2>
+    <div class="table-wrap">
+      <table class="finance-table">
+        <thead>
+          <tr>
+            <th>Trimestre</th>
+            <th class="num">Ingresos</th>
+            <th class="num">Gastos</th>
+            <th class="num">Resultado</th>
+            <th class="num">IVA 303</th>
+            <th class="num">IRPF 130</th>
+          </tr>
+        </thead>
+        <tbody>{q_rows}</tbody>
+      </table>
+    </div>"""
+
+    # ── Monthly bar chart ─────────────────────────────────────────────────────
+    monthly_income = {}
+    for inv in invoices:
+        for pmt in inv["payments"]:
+            if pmt["date"][:4] == str(today_year):
+                month_key = pmt["date"][:7]
+                monthly_income[month_key] = monthly_income.get(month_key, 0) + pmt["amount"] / 1.21
+    monthly_expenses = {}
+    for e in expenses:
+        if e["date"][:4] == str(today_year):
+            month_key = e["date"][:7]
+            monthly_expenses[month_key] = monthly_expenses.get(month_key, 0) + e["amount_ex_iva"]
+
+    all_months = sorted(set(list(monthly_income.keys()) + list(monthly_expenses.keys())))
+    max_val = max([monthly_income.get(m, 0) for m in all_months] + [1])
+    month_names = {"01":"Ene","02":"Feb","03":"Mar","04":"Abr","05":"May","06":"Jun",
+                   "07":"Jul","08":"Ago","09":"Sep","10":"Oct","11":"Nov","12":"Dic"}
+
+    bars_html = ""
+    for m in all_months:
+        inc  = monthly_income.get(m, 0)
+        exp  = monthly_expenses.get(m, 0)
+        ih   = max(4, int(inc / max_val * 120))
+        eh   = max(0, int(exp / max_val * 120))
+        label = month_names.get(m[5:7], m[5:7])
+        bars_html += f"""
+      <div class="bar-group">
+        <div class="bar-pair">
+          <div class="bar bar-income" style="height:{ih}px" title="Ingresos {_fmt_eur(inc)}"></div>
+          <div class="bar bar-expense" style="height:{eh}px" title="Gastos {_fmt_eur(exp)}"></div>
+        </div>
+        <div class="bar-label">{label}</div>
+      </div>"""
+
+    chart_legend = """
+    <div class="chart-legend">
+      <span class="legend-dot" style="background:#059669"></span> Ingresos
+      <span class="legend-dot" style="background:#DC2626;margin-left:14px"></span> Gastos
+    </div>"""
+
+    chart_html = f"""
+    <h2 class="section-label" style="margin-top:28px">Evolución mensual {today_year}</h2>
+    {chart_legend}
+    <div class="bar-chart">{bars_html}</div>"""  if all_months else ""
+
+    # ── Invoices table ────────────────────────────────────────────────────────
+    inv_rows = ""
+    for inv in invoices:
+        dep_dot = '<span class="status-dot paid">●</span>' if inv["status"]["deposit"] else '<span class="status-dot unpaid">●</span>'
+        bal_dot = '<span class="status-dot paid">●</span>' if inv["status"]["balance"] else '<span class="status-dot unpaid">●</span>'
+        inv_rows += f"""
+        <tr>
+          <td>{inv['id']}</td>
+          <td>{inv['client']}</td>
+          <td class="num">{_fmt_eur(inv['total'])}</td>
+          <td class="num">{_fmt_eur(inv['paid'])}</td>
+          <td class="num" style="{'color:#DC2626;font-weight:600' if inv['outstanding'] > 0 else ''}">{_fmt_eur(inv['outstanding'])}</td>
+          <td class="center">{dep_dot} Dep &nbsp; {bal_dot} Sal</td>
+          <td>{inv['due_date']}</td>
+        </tr>"""
+
+    invoices_html = f"""
+    <h2 class="section-label" style="margin-top:28px">Facturas</h2>
+    <div class="table-wrap">
+      <table class="finance-table">
+        <thead>
+          <tr>
+            <th>Factura</th>
+            <th>Cliente</th>
+            <th class="num">Total</th>
+            <th class="num">Cobrado</th>
+            <th class="num">Pendiente</th>
+            <th class="center">Estado</th>
+            <th>Vencimiento</th>
+          </tr>
+        </thead>
+        <tbody>{inv_rows}</tbody>
+      </table>
+    </div>""" if invoices else ""
+
+    # ── Expenses table ────────────────────────────────────────────────────────
+    exp_rows = ""
+    for e in expenses:
+        bg, fg = CATEGORY_COLORS.get(e["category"], ("#F3F4F6", "#6B7280"))
+        pill = f'<span class="category-pill" style="background:{bg};color:{fg}">{e["category"]}</span>'
+        exp_rows += f"""
+        <tr>
+          <td>{e['date']}</td>
+          <td>{pill}</td>
+          <td>{e['description']}</td>
+          <td>{e['supplier']}</td>
+          <td class="num">{_fmt_eur(e['amount_ex_iva'])}</td>
+          <td class="num">{_fmt_eur(e['iva_amount'])}</td>
+          <td class="num"><strong>{_fmt_eur(e['total'])}</strong></td>
+        </tr>"""
+
+    expenses_html = f"""
+    <h2 class="section-label" style="margin-top:28px">Gastos</h2>
+    <div class="table-wrap">
+      <table class="finance-table">
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Categoría</th>
+            <th>Descripción</th>
+            <th>Proveedor</th>
+            <th class="num">Base</th>
+            <th class="num">IVA</th>
+            <th class="num">Total</th>
+          </tr>
+        </thead>
+        <tbody>{exp_rows}</tbody>
+      </table>
+    </div>""" if expenses else ""
+
+    return summary_html + tax_html + quarterly_html + chart_html + invoices_html + expenses_html
+
 
 STAGE_COLORS = {
     "consultation":  ("#EDE9FE", "#7C3AED"),
@@ -212,7 +581,7 @@ def render_inbox_cards(inbox):
     </div>"""
     return cards
 
-def render_html(clients, appointments, finances, inbox):
+def render_html(clients, appointments, finances, expenses, inbox):
     upcoming = [a for a in appointments if not a["past"]]
     active = [c for c in clients if c["active_order"]]
     leads  = [c for c in clients if not c["active_order"]]
@@ -238,6 +607,9 @@ def render_html(clients, appointments, finances, inbox):
         clients_html += f'<h2 class="section-label" style="margin-top:32px">Leads</h2><div class="cards-grid">{lead_cards}</div>'
     if not clients_html:
         clients_html = '<div class="empty">No clients yet.</div>'
+
+    # Finances
+    finances_html = render_finances_html(finances, expenses)
 
     # Upcoming appointments rows
     appt_rows = ""
@@ -542,6 +914,194 @@ def render_html(clients, appointments, finances, inbox):
     text-align: center;
   }}
 
+  /* ── Finances ── */
+  .fin-summary {{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }}
+  .fin-stat {{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+  }}
+  .fin-stat-num {{
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+  }}
+  .fin-stat-label {{
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-top: 4px;
+  }}
+  .tax-box {{
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 4px;
+  }}
+  .tax-box.urgent {{
+    border-color: #FCA5A5;
+    background: #FFF5F5;
+  }}
+  .tax-box-header {{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 6px;
+  }}
+  .tax-q-label {{
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+  }}
+  .tax-due {{
+    font-size: 12px;
+    color: var(--muted);
+  }}
+  .tax-grid {{
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+  }}
+  .tax-item {{
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }}
+  .tax-model {{
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: var(--muted);
+    margin-bottom: 2px;
+  }}
+  .tax-name {{
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }}
+  .tax-amount {{
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+  }}
+  .tax-detail {{
+    font-size: 10px;
+    color: #A8A29E;
+    margin-top: 3px;
+    line-height: 1.4;
+  }}
+  .table-wrap {{
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    margin-bottom: 4px;
+  }}
+  .finance-table {{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    background: var(--surface);
+    border-radius: 12px;
+    overflow: hidden;
+  }}
+  .finance-table th {{
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }}
+  .finance-table td {{
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    white-space: nowrap;
+  }}
+  .finance-table tbody tr:last-child td {{ border-bottom: none; }}
+  .finance-table tbody tr:hover td {{ background: var(--bg); }}
+  .finance-table .num {{ text-align: right; font-variant-numeric: tabular-nums; }}
+  .finance-table .center {{ text-align: center; }}
+  .category-pill {{
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 500;
+  }}
+  .status-dot {{ font-size: 10px; }}
+  .status-dot.paid  {{ color: #059669; }}
+  .status-dot.unpaid {{ color: #D1D5DB; }}
+  .bar-chart {{
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 12px 4px 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-bottom: 4px;
+  }}
+  .bar-chart::-webkit-scrollbar {{ display: none; }}
+  .bar-group {{
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+  }}
+  .bar-pair {{
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 128px;
+  }}
+  .bar {{
+    width: 16px;
+    border-radius: 4px 4px 0 0;
+    min-height: 4px;
+    cursor: default;
+    transition: opacity .15s;
+  }}
+  .bar:hover {{ opacity: .75; }}
+  .bar-income  {{ background: #059669; }}
+  .bar-expense {{ background: #FCA5A5; }}
+  .bar-label {{
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 6px;
+    text-align: center;
+  }}
+  .chart-legend {{
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }}
+  .legend-dot {{
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+  }}
+
   /* ── Inbox cards ── */
   .inbox-card {{
     background: var(--surface);
@@ -685,7 +1245,7 @@ def render_html(clients, appointments, finances, inbox):
   <div class="tab active" data-panel="clients">Clients</div>
   <div class="tab" data-panel="appointments">Appointments</div>
   <div class="tab" data-panel="orders">Orders <span class="wip">soon</span></div>
-  <div class="tab" data-panel="finances">Finances <span class="wip">soon</span></div>
+  <div class="tab" data-panel="finances">Finances</div>
   <div class="tab" data-panel="inbox">Inbox {inbox_badge}</div>
 </div>
 
@@ -709,11 +1269,7 @@ def render_html(clients, appointments, finances, inbox):
   </div>
 
   <div class="panel" id="panel-finances">
-    <div class="wip-panel">
-      <div class="wip-icon">&#128176;</div>
-      <div class="wip-title">Finances</div>
-      <div class="wip-sub">Invoices, deposits, outstanding balances — coming soon.</div>
-    </div>
+    {finances_html}
   </div>
 
   <div class="panel" id="panel-inbox">
@@ -843,8 +1399,9 @@ class Handler(BaseHTTPRequestHandler):
         clients = load_clients()
         appointments = load_appointments()
         finances = load_finances()
+        expenses = load_expenses()
         inbox = load_inbox()
-        html = render_html(clients, appointments, finances, inbox)
+        html = render_html(clients, appointments, finances, expenses, inbox)
         self._send(200, "text/html", html)
 
     def do_POST(self):
