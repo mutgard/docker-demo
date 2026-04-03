@@ -300,8 +300,8 @@ class Handler(BaseHTTPRequestHandler):
         pass  # silence request logs
 
 if __name__ == "__main__":
-    port = 8765
+    port = int(os.environ.get("PORT", 8765))
     print(f"Dashboard running → http://localhost:{port}")
     print("Reads live from atelier/ — just refresh the browser to update.")
     print("Ctrl+C to stop.\n")
-    HTTPServer(("", port), Handler).serve_forever()
+    HTTPServer(("0.0.0.0", port), Handler).serve_forever()
