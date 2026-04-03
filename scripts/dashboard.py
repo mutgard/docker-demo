@@ -5,10 +5,10 @@ Run: python3 scripts/dashboard.py
 Then open: http://localhost:8765
 """
 
-import os, re, json
+import os, re, json, urllib.parse
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from datetime import date
+from datetime import date, datetime
 
 ROOT = Path(__file__).parent.parent / "atelier"
 TODAY = str(date.today())
@@ -103,6 +103,22 @@ def load_finances():
         })
     return invoices
 
+def load_inbox():
+    messages = []
+    inbox_dir = ROOT / "inbox"
+    if not inbox_dir.exists():
+        return messages
+    for f in sorted(inbox_dir.glob("*.json")):
+        try:
+            data = json.loads(f.read_text())
+        except Exception:
+            continue
+        if data.get("status") == "pending":
+            data["_file"] = f.name
+            messages.append(data)
+    messages.sort(key=lambda m: m.get("received_at", ""), reverse=True)
+    return messages
+
 
 # ── HTML ──────────────────────────────────────────────────────────────────────
 
@@ -162,7 +178,41 @@ def render_client_card(c):
       {order_label}
     </div>"""
 
-def render_html(clients, appointments, finances):
+def render_inbox_cards(inbox):
+    if not inbox:
+        return '<div class="inbox-empty">All caught up — no pending messages.</div>'
+    cards = ""
+    for msg in inbox:
+        msg_id   = msg.get("id", msg.get("_file", ""))
+        channel  = msg.get("channel", "")
+        ch_label = "WhatsApp" if channel == "whatsapp" else "Web form"
+        ch_cls   = "channel-whatsapp" if channel == "whatsapp" else "channel-webform"
+        from_name    = msg.get("from_name", "Unknown")
+        from_contact = msg.get("from_contact", "")
+        received     = msg.get("received_at", "")[:16].replace("T", " ")
+        message      = msg.get("message", "").replace("<", "&lt;").replace(">", "&gt;")
+        draft        = msg.get("draft", "").replace("<", "&lt;").replace(">", "&gt;")
+        cards += f"""
+    <div class="inbox-card" id="card-{msg_id}">
+      <div class="inbox-card-header">
+        <span class="channel-badge {ch_cls}">{ch_label}</span>
+        <div class="inbox-from">
+          {from_name}
+          <span class="inbox-from-sub">{from_contact}</span>
+        </div>
+        <span class="inbox-time">{received}</span>
+      </div>
+      <div class="message-bubble">{message}</div>
+      <div class="draft-label">Draft response</div>
+      <textarea class="draft-textarea" id="draft-{msg_id}">{draft}</textarea>
+      <div class="inbox-actions">
+        <button class="btn-send" onclick="inboxAction('{msg_id}','send')">Approve &amp; Send</button>
+        <button class="btn-dismiss" onclick="inboxAction('{msg_id}','dismiss')">Dismiss</button>
+      </div>
+    </div>"""
+    return cards
+
+def render_html(clients, appointments, finances, inbox):
     upcoming = [a for a in appointments if not a["past"]]
     active = [c for c in clients if c["active_order"]]
     leads  = [c for c in clients if not c["active_order"]]
@@ -171,7 +221,11 @@ def render_html(clients, appointments, finances):
     stat_orders = len(active)
     stat_leads  = len(leads)
     stat_appts  = len(upcoming)
-    stat_inv    = len([f for f in finances if f["outstanding"] and f["outstanding"] not in ("—", "", "0")])
+    stat_inbox  = len(inbox)
+
+    # Inbox
+    inbox_html   = render_inbox_cards(inbox)
+    inbox_badge  = f'<span class="wip" style="background:#FEE2E2;color:#DC2626">{stat_inbox}</span>' if stat_inbox else ""
 
     # Client cards
     active_cards = "".join(render_client_card(c) for c in active)
@@ -488,6 +542,109 @@ def render_html(clients, appointments, finances):
     text-align: center;
   }}
 
+  /* ── Inbox cards ── */
+  .inbox-card {{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 12px;
+  }}
+  .inbox-card-header {{
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 12px;
+  }}
+  .channel-badge {{
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 600;
+    color: white;
+    flex-shrink: 0;
+  }}
+  .channel-whatsapp {{ background: #25D366; }}
+  .channel-webform  {{ background: #3B82F6; }}
+  .inbox-from {{ font-weight: 600; font-size: 14px; flex: 1; min-width: 0; }}
+  .inbox-from-sub {{ font-size: 12px; color: var(--muted); display: block; font-weight: 400; }}
+  .inbox-time {{ font-size: 11px; color: #A8A29E; flex-shrink: 0; }}
+  .message-bubble {{
+    background: #F5F5F4;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--text);
+    margin-bottom: 12px;
+  }}
+  .draft-label {{
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }}
+  .draft-textarea {{
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--bg);
+    resize: vertical;
+    min-height: 90px;
+    margin-bottom: 10px;
+    outline: none;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+  }}
+  .draft-textarea:focus {{ border-color: var(--accent); }}
+  .inbox-actions {{ display: flex; gap: 8px; }}
+  .btn-send {{
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }}
+  .btn-send:hover {{ opacity: 0.85; }}
+  .btn-dismiss {{
+    background: none;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: color 0.15s;
+  }}
+  .btn-dismiss:hover {{ color: var(--text); }}
+  .inbox-empty {{
+    text-align: center;
+    padding: 48px 0;
+    font-size: 14px;
+    color: var(--muted);
+  }}
+  .header-link {{
+    font-size: 12px;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: color 0.15s;
+    white-space: nowrap;
+  }}
+  .header-link:hover {{ color: var(--text); }}
+
   @media (max-width: 480px) {{
     .cards-grid {{ grid-template-columns: 1fr; }}
     .stat-num {{ font-size: 20px; }}
@@ -502,6 +659,7 @@ def render_html(clients, appointments, finances):
     <div class="brand-name">Juliette by Julia Arnau</div>
     <div class="brand-sub">{TODAY}</div>
   </div>
+  <a href="/contact" class="header-link">Contact form ↗</a>
 </header>
 
 <div class="stats">
@@ -518,8 +676,8 @@ def render_html(clients, appointments, finances):
     <div class="stat-label">Upcoming</div>
   </div>
   <div class="stat">
-    <div class="stat-num">{stat_inv}</div>
-    <div class="stat-label">Unpaid</div>
+    <div class="stat-num">{stat_inbox}</div>
+    <div class="stat-label">Inbox</div>
   </div>
 </div>
 
@@ -528,7 +686,7 @@ def render_html(clients, appointments, finances):
   <div class="tab" data-panel="appointments">Appointments</div>
   <div class="tab" data-panel="orders">Orders <span class="wip">soon</span></div>
   <div class="tab" data-panel="finances">Finances <span class="wip">soon</span></div>
-  <div class="tab" data-panel="inbox">Inbox <span class="wip">soon</span></div>
+  <div class="tab" data-panel="inbox">Inbox {inbox_badge}</div>
 </div>
 
 <div class="content">
@@ -559,11 +717,7 @@ def render_html(clients, appointments, finances):
   </div>
 
   <div class="panel" id="panel-inbox">
-    <div class="wip-panel">
-      <div class="wip-icon">&#128172;</div>
-      <div class="wip-title">Inbox</div>
-      <div class="wip-sub">Unified inbox for WhatsApp, email, and web form — coming soon.</div>
-    </div>
+    {inbox_html}
   </div>
 
 </div>
@@ -577,6 +731,29 @@ def render_html(clients, appointments, finances):
       document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
     }});
   }});
+
+  function inboxAction(id, action) {{
+    fetch('/inbox/action', {{
+      method: 'POST',
+      headers: {{'Content-Type': 'application/json'}},
+      body: JSON.stringify({{id, action}})
+    }}).then(r => r.json()).then(data => {{
+      if (data.ok) {{
+        const card = document.getElementById('card-' + id);
+        if (card) {{
+          card.style.transition = 'opacity 0.3s';
+          card.style.opacity = '0';
+          setTimeout(() => {{
+            card.remove();
+            const panel = document.getElementById('panel-inbox');
+            if (!panel.querySelector('.inbox-card')) {{
+              panel.innerHTML = '<div class="inbox-empty">All caught up — no pending messages.</div>';
+            }}
+          }}, 300);
+        }}
+      }}
+    }}).catch(() => alert('Action failed — please try again.'));
+  }}
 </script>
 </body>
 </html>"""
@@ -584,16 +761,151 @@ def render_html(clients, appointments, finances):
 
 # ── HTTP server ───────────────────────────────────────────────────────────────
 
+CONTACT_FORM_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contact — Juliette by Julia Arnau</title>
+<style>
+  :root { --bg:#FAF8F5; --surface:#FFFFFF; --border:#EDE9E3; --text:#1C1917; --muted:#78716C; --accent:#9D7B5A; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; align-items:center; padding:40px 20px; }
+  .back { align-self:flex-start; font-size:13px; color:var(--muted); text-decoration:none; margin-bottom:32px; }
+  .back:hover { color:var(--text); }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:32px; width:100%; max-width:480px; }
+  h1 { font-size:22px; font-weight:700; margin-bottom:4px; }
+  .sub { font-size:14px; color:var(--muted); margin-bottom:28px; }
+  label { display:block; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:6px; margin-top:18px; }
+  input, textarea { width:100%; border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-size:14px; font-family:inherit; color:var(--text); background:var(--bg); outline:none; transition:border-color .15s; }
+  input:focus, textarea:focus { border-color:var(--accent); }
+  textarea { min-height:110px; resize:vertical; }
+  .opt { font-weight:400; color:#A8A29E; text-transform:none; letter-spacing:0; font-size:11px; }
+  button { margin-top:24px; width:100%; background:var(--accent); color:#fff; border:none; border-radius:10px; padding:13px; font-size:15px; font-weight:600; cursor:pointer; transition:opacity .15s; }
+  button:hover { opacity:.88; }
+</style>
+</head>
+<body>
+<a class="back" href="/">&#8592; Back to dashboard</a>
+<div class="card">
+  <h1>Get in touch</h1>
+  <p class="sub">Tell us about your wedding and we'll be in touch soon.</p>
+  <form method="POST" action="/contact">
+    <label>Name</label>
+    <input type="text" name="name" required placeholder="Your full name">
+    <label>Email</label>
+    <input type="email" name="email" required placeholder="you@example.com">
+    <label>Phone <span class="opt">optional</span></label>
+    <input type="tel" name="phone" placeholder="+34 600 000 000">
+    <label>Wedding date <span class="opt">approximate is fine</span></label>
+    <input type="text" name="wedding_date" placeholder="e.g. June 2027">
+    <label>Message</label>
+    <textarea name="message" required placeholder="Tell us about your vision, style, any inspiration..."></textarea>
+    <button type="submit">Send message</button>
+  </form>
+</div>
+</body>
+</html>"""
+
+CONTACT_THANKS_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thank you — Juliette by Julia Arnau</title>
+<style>
+  :root { --bg:#FAF8F5; --surface:#FFFFFF; --border:#EDE9E3; --text:#1C1917; --muted:#78716C; --accent:#9D7B5A; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:40px 20px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:40px 32px; text-align:center; max-width:400px; width:100%; }
+  .icon { font-size:40px; margin-bottom:20px; }
+  h1 { font-size:22px; font-weight:700; margin-bottom:10px; }
+  p { font-size:14px; color:var(--muted); line-height:1.6; margin-bottom:24px; }
+  a { color:var(--accent); font-size:14px; text-decoration:none; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="icon">&#9825;</div>
+  <h1>Thank you!</h1>
+  <p>Your message has been received. We'll be in touch with you shortly.</p>
+  <a href="/contact">&#8592; Send another message</a>
+</div>
+</body>
+</html>"""
+
+
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
+        if self.path == "/contact":
+            self._send(200, "text/html", CONTACT_FORM_HTML)
+            return
         clients = load_clients()
         appointments = load_appointments()
         finances = load_finances()
-        html = render_html(clients, appointments, finances)
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
+        inbox = load_inbox()
+        html = render_html(clients, appointments, finances, inbox)
+        self._send(200, "text/html", html)
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(length)
+
+        if self.path == "/inbox/action":
+            try:
+                data = json.loads(body)
+                msg_id = data.get("id", "")
+                action = data.get("action", "")
+                inbox_dir = ROOT / "inbox"
+                matched = None
+                for f in inbox_dir.glob("*.json"):
+                    try:
+                        item = json.loads(f.read_text())
+                    except Exception:
+                        continue
+                    if item.get("id") == msg_id or f.stem == msg_id:
+                        item["status"] = "sent" if action == "send" else "dismissed"
+                        f.write_text(json.dumps(item, ensure_ascii=False, indent=2))
+                        matched = True
+                        break
+                self._send(200, "application/json", json.dumps({"ok": bool(matched)}))
+            except Exception:
+                self._send(400, "application/json", '{"ok":false}')
+
+        elif self.path == "/contact":
+            try:
+                params = urllib.parse.parse_qs(body.decode("utf-8", errors="replace"))
+                def p(k): return params.get(k, [""])[0].strip()
+                ts = datetime.now().strftime("%Y-%m-%d-%H%M%S")
+                entry = {
+                    "id": f"{ts}-webform",
+                    "channel": "webform",
+                    "from_name": p("name"),
+                    "from_contact": p("email") or p("phone"),
+                    "client_slug": "",
+                    "received_at": datetime.now().isoformat(timespec="seconds"),
+                    "message": p("message"),
+                    "wedding_date": p("wedding_date"),
+                    "draft": "",
+                    "status": "pending",
+                }
+                inbox_dir = ROOT / "inbox"
+                inbox_dir.mkdir(exist_ok=True)
+                (inbox_dir / f"{ts}-webform.json").write_text(
+                    json.dumps(entry, ensure_ascii=False, indent=2)
+                )
+                self._send(200, "text/html", CONTACT_THANKS_HTML)
+            except Exception:
+                self._send(500, "text/html", "<h1>Error</h1>")
+        else:
+            self._send(404, "text/plain", "Not found")
+
+    def _send(self, code, ctype, content):
+        encoded = content.encode() if isinstance(content, str) else content
+        self.send_response(code)
+        self.send_header("Content-Type", f"{ctype}; charset=utf-8")
         self.end_headers()
-        self.wfile.write(html.encode())
+        self.wfile.write(encoded)
 
     def log_message(self, fmt, *args):
         pass
