@@ -1350,7 +1350,7 @@ def render_intake_html(scenarios):
   <span id="intake-status" style="font-size:12px;color:var(--muted);margin-left:auto"></span>
 </div>
 
-<div id="intake-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-items:start">
+<div id="intake-grid" class="intake-grid">
   <div id="col-thread"></div>
   <div id="col-brief"></div>
   <div id="col-action"></div>
@@ -1654,16 +1654,26 @@ def render_html(clients, appointments, finances, expenses, inbox, scenarios=None
     vertical-align: middle;
   }}
 
+  /* ── Intake grid ── */
+  .intake-grid {{ display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; align-items: start; }}
+
   /* ── Content ── */
   .content {{ flex: 1; overflow-y: auto; padding: 20px; }}
+  @media (max-width: 900px) {{
+    .intake-grid {{ grid-template-columns: 1fr 1fr; }}
+  }}
   @media (max-width: 700px) {{
     .content {{ padding: 12px; }}
     header {{ padding: 0 14px; }}
+    .header-link {{ display: none; }}
     .cards-grid {{ gap: 8px; }}
     .client-card {{ padding: 14px; }}
     .list-row {{ padding: 12px; gap: 10px; }}
     .list-date {{ min-width: 64px; font-size: 11px; }}
     .fin-summary {{ grid-template-columns: repeat(2, 1fr); }}
+    .intake-grid {{ grid-template-columns: 1fr; }}
+    .stat {{ padding: 10px 12px; }}
+    .stat-num {{ font-size: 20px; }}
   }}
   .panel {{ display: none; }}
   .panel.active {{ display: block; }}
@@ -2115,9 +2125,9 @@ def render_html(clients, appointments, finances, expenses, inbox, scenarios=None
   }}
   .header-link:hover {{ color: var(--text); }}
 
-  @media (max-width: 480px) {{
-    .cards-grid {{ grid-template-columns: 1fr; }}
-    .stat-num {{ font-size: 20px; }}
+  @media (max-width: 400px) {{
+    .tab {{ padding: 10px 12px; font-size: 12px; }}
+    .brand-sub {{ display: none; }}
   }}
 </style>
 </head>
