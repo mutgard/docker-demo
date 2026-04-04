@@ -228,6 +228,114 @@ def load_inbox():
     messages.sort(key=lambda m: m.get("received_at", ""), reverse=True)
     return messages
 
+def load_scenarios():
+    scenarios = []
+    sc_dir = ROOT / "demo-scenarios"
+    if not sc_dir.exists():
+        return scenarios
+    for f in sorted(sc_dir.glob("*.json")):
+        try:
+            scenarios.append(json.loads(f.read_text()))
+        except Exception:
+            continue
+    return scenarios
+
+def create_client_files(scenario):
+    """Write client profile, comms log, and update _index.md from a demo scenario."""
+    slug = scenario["client_slug"]
+    brief = scenario.get("brief", {})
+    messages = scenario.get("messages", [])
+    today = str(date.today())
+
+    client_dir = ROOT / "clients" / slug
+    comms_dir = client_dir / "comms"
+    comms_dir.mkdir(parents=True, exist_ok=True)
+
+    nombre = brief.get("nombre", "Por identificar")
+    boda = brief.get("boda", "")
+    iso_date_m = re.search(r"(\d{4}-\d{2}-\d{2})", boda)
+    boda_iso = iso_date_m.group(1) if iso_date_m else boda
+
+    # ── Profile ──────────────────────────────────────────────────────────────
+    profile_path = client_dir / "profile.md"
+    if not profile_path.exists():
+        notes = ", ".join(filter(None, [
+            brief.get("estilo", ""),
+            brief.get("silueta", ""),
+            f"tejido: {brief.get('tejido', '')}" if brief.get("tejido") else "",
+            brief.get("color", ""),
+        ]))
+        profile_path.write_text(
+            f"# Client: {nombre}\n\n"
+            "## Contact\n"
+            "- **Phone:** \n"
+            "- **Email:** \n"
+            f"- **WhatsApp:** {brief.get('telefono', '')}\n"
+            "- **Instagram:** \n"
+            "- **Address:** \n\n"
+            "## Source\n"
+            "- **How did they find us:** WhatsApp\n"
+            "- **Referred by:** \n\n"
+            "## Personal\n"
+            f"- **Wedding date:** {boda_iso}\n"
+            f"- **Venue:** {brief.get('lugar', '')}\n"
+            f"- **Budget:** {brief.get('presupuesto', '')}\n"
+            f"- **Notes:** {notes}\n\n"
+            "## Status\n"
+            f"- **Client since:** {today}\n"
+            "- **Active order:** no\n"
+            "- **Tags:** lead, intake-demo\n\n"
+            "---\n"
+            f"*Created: {today}*\n"
+            f"*Last updated: {today}*\n"
+        )
+
+    # ── Comms log ────────────────────────────────────────────────────────────
+    comms_path = comms_dir / f"{today}-whatsapp.md"
+    if not comms_path.exists():
+        thread_lines = []
+        for m in messages:
+            speaker = "Julia" if m["from"] == "julia" else "Cliente"
+            thread_lines.append(f"**{speaker} [{m['time']}]:** {m['text']}")
+        thread_text = "\n\n".join(thread_lines)
+
+        comms_path.write_text(
+            f"# Communication: {today} — {nombre}\n\n"
+            "## Details\n"
+            f"- **Date:** {today}\n"
+            f"- **Time:** {messages[0]['time'] if messages else ''}\n"
+            "- **Channel:** whatsapp\n"
+            "- **Direction:** inbound\n"
+            f"- **Client:** [[clients/{slug}/profile]]\n\n"
+            "## Summary\n\n"
+            f"Primera toma de contacto por WhatsApp. {nombre} expresa interés en un vestido a medida.\n\n"
+            f"{thread_text}\n\n"
+            "## Action items\n"
+            "- [ ] Confirmar disponibilidad para primera sesión\n"
+            "- [ ] Revisar presupuesto y plazos\n\n"
+            "## Follow-up required\n"
+            "- **By whom:** Julia\n"
+            "- **By when:** \n"
+            "- **Done:** no\n\n"
+            "---\n"
+            f"*Created: {today}*\n"
+        )
+
+    # ── Update _index.md ─────────────────────────────────────────────────────
+    index_path = ROOT / "clients" / "_index.md"
+    index_text = index_path.read_text()
+    if slug not in index_text:
+        new_row = f"| [{nombre}]({slug}/profile.md) | {today} | WhatsApp | — |\n"
+        updated = re.sub(
+            r"(## Leads.*?)((?:\|[^\n]+\|\n)+)",
+            lambda m: m.group(0) + new_row,
+            index_text,
+            flags=re.DOTALL,
+        )
+        index_path.write_text(updated)
+
+    return True
+
 
 # ── HTML ──────────────────────────────────────────────────────────────────────
 
@@ -581,7 +689,160 @@ def render_inbox_cards(inbox):
     </div>"""
     return cards
 
-def render_html(clients, appointments, finances, expenses, inbox):
+def render_intake_html(scenarios):
+    if not scenarios:
+        return '<div class="empty">No demo scenarios found in atelier/demo-scenarios/</div>'
+
+    options_html = "\n".join(
+        f'      <option value="{s["id"]}">{s["label"]}</option>'
+        for s in scenarios
+    )
+    scenarios_json = json.dumps(
+        {s["id"]: s for s in scenarios}, ensure_ascii=False, indent=2
+    )
+
+    return f"""
+<div style="display:flex;align-items:center;gap:16px;margin-bottom:28px;flex-wrap:wrap">
+  <span style="font-size:11px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;flex-shrink:0">Demo scenario</span>
+  <select id="scenario-select"
+    style="font-family:inherit;font-size:13px;padding:8px 12px;border:1px solid var(--border);
+           border-radius:2px;background:var(--surface);color:var(--text);cursor:pointer;min-width:240px"
+    onchange="loadScenario(this.value)">
+{options_html}
+  </select>
+  <span id="intake-status" style="font-size:12px;color:var(--muted);margin-left:auto"></span>
+</div>
+
+<div id="intake-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;align-items:start">
+  <div id="col-thread"></div>
+  <div id="col-brief"></div>
+  <div id="col-action"></div>
+</div>
+
+<script>
+const SCENARIOS = {scenarios_json};
+
+function renderThread(sc) {{
+  const msgs = (sc.messages || []).map(m => {{
+    const isJulia = m.from === 'julia';
+    const bg = isJulia ? '#F5EFE8' : '#EBF5F0';
+    const align = isJulia ? 'flex-start' : 'flex-end';
+    const label = isJulia ? 'Julia \U0001F90D' : 'Cliente';
+    return `<div style="display:flex;flex-direction:column;align-items:${{align}};margin-bottom:12px">
+      <div style="font-size:10px;color:#78716C;margin-bottom:3px;letter-spacing:0.5px">${{label}} \xb7 ${{m.time}}</div>
+      <div style="background:${{bg}};padding:10px 14px;border-radius:12px;max-width:82%;font-size:13px;line-height:1.5;color:#1C1917">${{m.text}}</div>
+    </div>`;
+  }}).join('');
+
+  document.getElementById('col-thread').innerHTML = `
+    <div style="font-size:10px;letter-spacing:2px;color:var(--accent);font-weight:600;margin-bottom:12px;text-transform:uppercase">Conversaci\xf3n WhatsApp</div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:4px;padding:16px;min-height:300px">
+      <div style="display:flex;align-items:center;gap:8px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid var(--border)">
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:16px">\U0001F90D</div>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text)">Julia \xb7 Atelier</div>
+          <div style="font-size:11px;color:var(--muted)">WhatsApp</div>
+        </div>
+      </div>
+      ${{msgs}}
+    </div>`;
+}}
+
+function renderBrief(sc) {{
+  const b = sc.brief || {{}};
+  const fields = [
+    ['Nombre', b.nombre], ['Boda', b.boda], ['Lugar', b.lugar],
+    ['Estilo', b.estilo], ['Silueta', b.silueta], ['Escote', b.escote],
+    ['Tejido', b.tejido], ['Cola', b.cola], ['Color', b.color],
+    ['Presupuesto', b.presupuesto],
+  ].filter(([, v]) => v).map(([k, v]) =>
+    `<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px">
+      <span style="color:var(--muted);min-width:90px;flex-shrink:0">${{k}}</span>
+      <span style="color:var(--text)">${{v}}</span>
+    </div>`
+  ).join('');
+
+  const alerts = (b.alertas || []).map(a =>
+    `<div style="background:#FEF3C7;border-left:3px solid #D97706;padding:8px 12px;font-size:12px;color:#92400E;margin-top:8px;border-radius:2px">\u26a0 ${{a}}</div>`
+  ).join('');
+
+  document.getElementById('col-brief').innerHTML = `
+    <div style="font-size:10px;letter-spacing:2px;color:var(--accent);font-weight:600;margin-bottom:12px;text-transform:uppercase">Brief extra\xeddo</div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:4px;padding:16px">
+      ${{fields}}
+      ${{alerts}}
+    </div>`;
+}}
+
+function renderAction(sc) {{
+  const b = sc.brief || {{}};
+  document.getElementById('col-action').innerHTML = `
+    <div style="font-size:10px;letter-spacing:2px;color:var(--accent);font-weight:600;margin-bottom:12px;text-transform:uppercase">Nueva clienta</div>
+    <div style="background:#fff;border:1px solid var(--border);border-radius:4px;padding:20px">
+      <div style="font-family:Georgia,serif;font-size:18px;color:var(--text);margin-bottom:4px">${{b.nombre || '\u2014'}}</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px">${{b.boda || ''}}</div>
+      <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:20px;font-size:13px">
+        <div><span style="color:var(--muted)">Estilo: </span>${{b.estilo || '\u2014'}}</div>
+        <div><span style="color:var(--muted)">Presupuesto: </span>${{b.presupuesto || '\u2014'}}</div>
+      </div>
+      <button id="create-btn"
+        onclick="createClient('${{sc.id}}')"
+        style="width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:2px;
+               font-family:inherit;font-size:13px;letter-spacing:1px;cursor:pointer;text-transform:uppercase">
+        Crear ficha de clienta
+      </button>
+      <div id="create-result" style="margin-top:12px;font-size:12px;color:var(--muted);text-align:center"></div>
+    </div>`;
+}}
+
+function loadScenario(id) {{
+  const sc = SCENARIOS[id];
+  if (!sc) return;
+  const r = document.getElementById('create-result');
+  if (r) r.textContent = '';
+  renderThread(sc);
+  renderBrief(sc);
+  renderAction(sc);
+}}
+
+function createClient(scenarioId) {{
+  const btn = document.getElementById('create-btn');
+  const result = document.getElementById('create-result');
+  btn.disabled = true;
+  btn.textContent = 'Creando...';
+  fetch('/api/create-client', {{
+    method: 'POST',
+    headers: {{'Content-Type': 'application/json'}},
+    body: JSON.stringify({{scenario_id: scenarioId}})
+  }})
+  .then(r => r.json())
+  .then(data => {{
+    if (data.ok) {{
+      btn.textContent = '\u2713 Ficha creada';
+      btn.style.background = '#3A8A5C';
+      result.style.color = '#3A8A5C';
+      result.textContent = 'Clienta a\xf1adida \u2192 ve a la pesta\xf1a Clients';
+    }} else {{
+      btn.disabled = false;
+      btn.textContent = 'Crear ficha de clienta';
+      result.style.color = '#DC2626';
+      result.textContent = data.error || 'Error al crear ficha';
+    }}
+  }})
+  .catch(() => {{
+    btn.disabled = false;
+    btn.textContent = 'Crear ficha de clienta';
+    result.style.color = '#DC2626';
+    result.textContent = 'Error de conexi\xf3n';
+  }});
+}}
+
+// Initialise with first scenario
+loadScenario(Object.keys(SCENARIOS)[0]);
+</script>"""
+
+
+def render_html(clients, appointments, finances, expenses, inbox, scenarios=None):
     upcoming = [a for a in appointments if not a["past"]]
     active = [c for c in clients if c["active_order"]]
     leads  = [c for c in clients if not c["active_order"]]
@@ -610,6 +871,7 @@ def render_html(clients, appointments, finances, expenses, inbox):
 
     # Finances
     finances_html = render_finances_html(finances, expenses)
+    intake_html = render_intake_html(scenarios or [])
 
     # Upcoming appointments rows
     appt_rows = ""
@@ -1247,6 +1509,7 @@ def render_html(clients, appointments, finances, expenses, inbox):
   <div class="tab" data-panel="orders">Orders <span class="wip">soon</span></div>
   <div class="tab" data-panel="finances">Finances</div>
   <div class="tab" data-panel="inbox">Inbox {inbox_badge}</div>
+  <div class="tab" data-panel="intake">Intake Demo ✦</div>
 </div>
 
 <div class="content">
@@ -1274,6 +1537,10 @@ def render_html(clients, appointments, finances, expenses, inbox):
 
   <div class="panel" id="panel-inbox">
     {inbox_html}
+  </div>
+
+  <div class="panel" id="panel-intake">
+    {intake_html}
   </div>
 
 </div>
@@ -1401,7 +1668,8 @@ class Handler(BaseHTTPRequestHandler):
         finances = load_finances()
         expenses = load_expenses()
         inbox = load_inbox()
-        html = render_html(clients, appointments, finances, expenses, inbox)
+        scenarios = load_scenarios()
+        html = render_html(clients, appointments, finances, expenses, inbox, scenarios)
         self._send(200, "text/html", html)
 
     def do_POST(self):
@@ -1454,6 +1722,23 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, "text/html", CONTACT_THANKS_HTML)
             except Exception:
                 self._send(500, "text/html", "<h1>Error</h1>")
+
+        elif self.path == "/api/create-client":
+            try:
+                data = json.loads(body)
+                scenario_id = data.get("scenario_id", "")
+                scenarios = load_scenarios()
+                scenario = next((s for s in scenarios if s["id"] == scenario_id), None)
+                if not scenario:
+                    self._send(404, "application/json",
+                               json.dumps({"ok": False, "error": "Scenario not found"}))
+                    return
+                create_client_files(scenario)
+                self._send(200, "application/json", json.dumps({"ok": True}))
+            except Exception as e:
+                self._send(500, "application/json",
+                           json.dumps({"ok": False, "error": str(e)}))
+
         else:
             self._send(404, "text/plain", "Not found")
 
