@@ -1023,12 +1023,16 @@ def render_client_detail_page(d):
     gap: 16px;
     margin-bottom: 20px;
   }}
+  .hero-name {{ word-break: break-word; }}
+  @media (max-width: 900px) {{
+    .detail-grid {{ grid-template-columns: 1fr; }}
+  }}
   @media (max-width: 700px) {{
     .main {{ padding: 12px; }}
-    .detail-grid {{ grid-template-columns: 1fr; }}
     .detail-card {{ padding: 14px; }}
     .hero {{ padding: 14px 16px; }}
     .hero-name {{ font-size: 19px; }}
+    .header-brand {{ display: none; }}
     .detail-info-row {{ flex-wrap: nowrap; }}
     .detail-info-row span:last-child {{ word-break: break-word; overflow-wrap: anywhere; min-width: 0; }}
     /* Spec table: stack label above value on mobile */
@@ -1042,8 +1046,16 @@ def render_client_detail_page(d):
     .tl-date {{ white-space: normal; }}
     /* Comms */
     .comm-direction {{ margin-left: 0; width: 100%; }}
+    .comm-summary {{ word-break: break-word; overflow-wrap: anywhere; }}
     .comms-section, .meas-section {{ padding: 14px; }}
     .fin-row {{ flex-wrap: wrap; gap: 2px; }}
+    .detail-notes, .detail-order-notes {{ word-break: break-word; overflow-wrap: anywhere; }}
+  }}
+  @media (max-width: 480px) {{
+    .hero-avatar {{ width: 44px; height: 44px; font-size: 15px; }}
+    .hero-name {{ font-size: 17px; }}
+    .hero-wedding {{ font-size: 12px; }}
+    .detail-card-title {{ font-size: 10px; }}
   }}
 
   /* ── Detail cards ── */
