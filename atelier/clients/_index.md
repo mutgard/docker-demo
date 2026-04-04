@@ -14,6 +14,7 @@
 | Name | First contact | Source | Follow-up due |
 |------|---------------|--------|---------------|
 | [Josefa](josefa/profile.md) | 2026-04-03 | — | 2026-04-07 (consultation) |
+| [Por identificar (Boho Bride)](boho-bride/profile.md) | 2026-03-29 | WhatsApp | 2026-04-05 (primera sesión) |
 
 ## Completed
 
@@ -21,4 +22,4 @@
 |------|--------------|----------|-----------|
 
 ---
-*Last updated: 2026-04-03*
+*Last updated: 2026-04-04*
