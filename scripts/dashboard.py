@@ -1024,7 +1024,17 @@ def render_client_detail_page(d):
     margin-bottom: 20px;
   }}
   @media (max-width: 700px) {{
+    .main {{ padding: 12px; }}
     .detail-grid {{ grid-template-columns: 1fr; }}
+    .detail-card {{ padding: 14px; }}
+    .hero {{ padding: 14px 16px; }}
+    .hero-name {{ font-size: 19px; }}
+    .detail-info-row span:last-child {{ word-break: break-word; overflow-wrap: anywhere; }}
+    .spec-label {{ width: 38%; white-space: normal; }}
+    .spec-value {{ word-break: break-word; overflow-wrap: anywhere; }}
+    .comm-direction {{ margin-left: 0; width: 100%; }}
+    .fin-row {{ flex-wrap: wrap; gap: 2px; }}
+    .comms-section, .meas-section {{ padding: 14px; }}
   }}
 
   /* ── Detail cards ── */
@@ -1637,6 +1647,15 @@ def render_html(clients, appointments, finances, expenses, inbox, scenarios=None
 
   /* ── Content ── */
   .content {{ flex: 1; overflow-y: auto; padding: 20px; }}
+  @media (max-width: 700px) {{
+    .content {{ padding: 12px; }}
+    header {{ padding: 0 14px; }}
+    .cards-grid {{ gap: 8px; }}
+    .client-card {{ padding: 14px; }}
+    .list-row {{ padding: 12px; gap: 10px; }}
+    .list-date {{ min-width: 64px; font-size: 11px; }}
+    .fin-summary {{ grid-template-columns: repeat(2, 1fr); }}
+  }}
   .panel {{ display: none; }}
   .panel.active {{ display: block; }}
 
