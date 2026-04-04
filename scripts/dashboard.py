@@ -253,8 +253,6 @@ def create_client_files(scenario):
 
     nombre = brief.get("nombre", "Por identificar")
     boda = brief.get("boda", "")
-    iso_date_m = re.search(r"(\d{4}-\d{2}-\d{2})", boda)
-    boda_iso = iso_date_m.group(1) if iso_date_m else boda
 
     # ── Profile ──────────────────────────────────────────────────────────────
     profile_path = client_dir / "profile.md"
@@ -277,7 +275,7 @@ def create_client_files(scenario):
             "- **How did they find us:** WhatsApp\n"
             "- **Referred by:** \n\n"
             "## Personal\n"
-            f"- **Wedding date:** {boda_iso}\n"
+            f"- **Wedding date:** {boda}\n"
             f"- **Venue:** {brief.get('lugar', '')}\n"
             f"- **Budget:** {brief.get('presupuesto', '')}\n"
             f"- **Notes:** {notes}\n\n"

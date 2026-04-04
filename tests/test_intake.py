@@ -107,6 +107,7 @@ class TestCreateClientFiles(unittest.TestCase):
         content = profile.read_text()
         self.assertIn("# Client: Test Bride", content)
         self.assertIn("€2.000", content)
+        self.assertIn("20 junio 2026", content)
 
     def test_creates_comms_log(self):
         scenario = {
