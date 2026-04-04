@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Atelier — Workflow Completo</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Helvetica Neue', Arial, sans-serif;
+  background: #F8F5F0;
+  color: #1A1714;
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+.header {
+  background: #1A1714;
+  padding: 24px 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.header-left { }
+.header-tag { font-size: 10px; letter-spacing: 4px; color: #B8966E; font-weight: 600; margin-bottom: 4px; }
+.header-title { font-family: Georgia, serif; font-size: 20px; color: #F8F5F0; font-weight: 700; }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #7A746E; letter-spacing: 1px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── LAYOUT ── */
+.layout { display: flex; height: calc(100vh - 68px); }
+
+/* ── LEFT COLUMN — phases ── */
+.phases-col {
+  width: 220px;
+  background: #1A1714;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 24px 0;
+}
+.phase-item {
+  padding: 14px 20px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  transition: all 0.2s;
+}
+.phase-item:hover { background: rgba(255,255,255,0.04); }
+.phase-item.active { border-left-color: #B8966E; background: rgba(184,150,110,0.08); }
+.phase-num { font-size: 9px; letter-spacing: 2px; color: #B8966E; font-weight: 600; margin-bottom: 3px; }
+.phase-name { font-family: Georgia, serif; font-size: 13px; color: #F8F5F0; line-height: 1.3; }
+.phase-auto { font-size: 9px; color: #7A746E; margin-top: 3px; letter-spacing: 0.5px; }
+.phase-auto.yes { color: #6BAB8A; }
+.phase-auto.partial { color: #B8966E; }
+.phase-auto.no { color: #7A746E; }
+
+/* ── CENTRE COLUMN — flow diagram ── */
+.flow-col {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+/* ── Flow node ── */
+.flow-node {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 20px;
+  background: white;
+  border-radius: 2px;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: all 0.2s;
+  position: relative;
+}
+.flow-node:hover { border-color: #B8966E; box-shadow: 0 2px 16px rgba(184,150,110,0.12); }
+.flow-node.active { border-color: #B8966E; box-shadow: 0 2px 20px rgba(184,150,110,0.18); }
+.flow-node.phase-header {
+  background: #1A1714;
+  cursor: default;
+  border-color: transparent;
+}
+.flow-node.phase-header:hover { border-color: transparent; box-shadow: none; }
+
+.node-icon {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 17px;
+  flex-shrink: 0;
+}
+.node-content { flex: 1; }
+.node-title { font-size: 13px; font-weight: 600; color: #1A1714; margin-bottom: 2px; }
+.node-desc { font-size: 11px; color: #7A746E; line-height: 1.5; }
+.node-badge {
+  font-size: 9px;
+  letter-spacing: 1px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  align-self: center;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.badge-auto { background: #E6F4ED; color: #3A8A5C; }
+.badge-partial { background: #FBF0E4; color: #B8966E; }
+.badge-manual { background: #F0EFEE; color: #7A746E; }
+.badge-you { background: #1A1714; color: #B8966E; }
+
+/* phase header content */
+.phase-header-inner { display: flex; align-items: center; gap: 12px; width: 100%; }
+.ph-num { font-size: 10px; letter-spacing: 2px; color: #B8966E; font-weight: 600; }
+.ph-title { font-family: Georgia, serif; font-size: 15px; color: #F8F5F0; }
+.ph-line { flex: 1; height: 1px; background: rgba(255,255,255,0.1); }
+
+/* connector */
+.connector {
+  width: 2px;
+  height: 20px;
+  background: #E8E4DF;
+  margin: 0 auto;
+  flex-shrink: 0;
+}
+.connector.dashed {
+  background: repeating-linear-gradient(to bottom, #E8E4DF 0, #E8E4DF 4px, transparent 4px, transparent 8px);
+}
+
+/* decision diamond */
+.decision {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  margin: 4px 0;
+}
+.diamond {
+  width: 120px; height: 52px;
+  background: #FBF0E4;
+  border: 1.5px solid #B8966E;
+  transform: perspective(200px);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; color: #B8966E;
+  letter-spacing: 0.5px;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  text-align: center;
+}
+
+/* ── RIGHT COLUMN — detail ── */
+.detail-col {
+  width: 340px;
+  background: white;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-left: 1px solid #EEE9E2;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  text-align: center;
+  color: #C8C0B8;
+}
+.detail-placeholder svg { margin-bottom: 16px; opacity: 0.4; }
+.detail-placeholder p { font-size: 13px; line-height: 1.6; }
+
+.detail-content { flex: 1; overflow-y: auto; }
+
+.detail-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #EEE9E2;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 10;
+}
+.detail-tag { font-size: 9px; letter-spacing: 2.5px; color: #B8966E; font-weight: 600; margin-bottom: 4px; }
+.detail-title { font-family: Georgia, serif; font-size: 17px; font-weight: 700; }
+
+.detail-section { padding: 16px 24px; border-bottom: 1px solid #F2EDE6; }
+.detail-section:last-child { border-bottom: none; }
+.section-label { font-size: 9px; letter-spacing: 2px; color: #B8966E; font-weight: 600; margin-bottom: 10px; text-transform: uppercase; }
+
+.detail-section p, .detail-section li {
+  font-size: 12.5px; color: #3D3530; line-height: 1.7;
+}
+.detail-section ul { padding-left: 14px; }
+.detail-section li { margin-bottom: 4px; }
+
+.tool-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #F2EDE6; color: #5C534C;
+  font-size: 10px; padding: 3px 8px; border-radius: 2px;
+  margin: 2px; letter-spacing: 0.3px;
+}
+.tool-chip.free { background: #E6F4ED; color: #3A8A5C; }
+.tool-chip.cost { background: #FBF0E4; color: #B8966E; }
+
+.step-list { list-style: none; padding: 0; }
+.step-list li {
+  display: flex; align-items: flex-start; gap: 10px;
+  margin-bottom: 8px; font-size: 12px; color: #3D3530; line-height: 1.5;
+}
+.step-num-badge {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #1A1714; color: #B8966E;
+  font-size: 9px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 1px;
+}
+
+.auto-bar {
+  height: 6px; border-radius: 3px;
+  background: #E8E4DF; margin-top: 6px; overflow: hidden;
+}
+.auto-fill { height: 100%; border-radius: 3px; background: #6BAB8A; }
+
+.msg-template {
+  background: #F8F5F0; border-left: 3px solid #B8966E;
+  padding: 10px 14px; font-size: 11px;
+  color: #5C534C; line-height: 1.7;
+  border-radius: 0 2px 2px 0; margin-top: 8px;
+  font-style: italic;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-tag">ATELIER — MAPA DE PROCESO COMPLETO</div>
+    <div class="header-title">De la primera consulta a la entrega</div>
+  </div>
+  <div class="header-right">
+    <div class="legend-item"><div class="legend-dot" style="background:#6BAB8A"></div>AUTOMATIZABLE</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#B8966E"></div>SEMI-AUTO</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#7A746E"></div>MANUAL</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#1A1714; border:1px solid #B8966E"></div>TÚ</div>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- LEFT: phases nav -->
+  <div class="phases-col">
+    <div class="phase-item active" onclick="scrollToPhase(0)" id="pnav-0">
+      <div class="phase-num">FASE 1</div>
+      <div class="phase-name">Primera Consulta</div>
+      <div class="phase-auto yes">● Automatizable</div>
+    </div>
+    <div class="phase-item" onclick="scrollToPhase(1)" id="pnav-1">
+      <div class="phase-num">FASE 2</div>
+      <div class="phase-name">Cualificación</div>
+      <div class="phase-auto partial">● Semi-automático</div>
+    </div>
+    <div class="phase-item" onclick="scrollToPhase(2)" id="pnav-2">
+      <div class="phase-num">FASE 3</div>
+      <div class="phase-name">Consulta Inicial</div>
+      <div class="phase-auto partial">● Semi-automático</div>
+    </div>
+    <div class="phase-item" onclick="scrollToPhase(3)" id="pnav-3">
+      <div class="phase-num">FASE 4</div>
+      <div class="phase-name">Descubrimiento de Diseño</div>
+      <div class="phase-auto yes">● Automatizable</div>
+    </div>
+    <div class="phase-item" onclick="scrollToPhase(4)" id="pnav-4">
+      <div class="phase-num">FASE 5</div>
+      <div class="phase-name">Propuesta y Contrato</div>
+      <div class="phase-auto partial">● Semi-automático</div>
+    </div>
+    <div class="phase-item" onclick="scrollToPhase(5)" id="pnav-5">
+      <div class="phase-num">FASE 6</div>
+      <div class="phase-name">Producción</div>
+      <div class="phase-auto no">● Tú</div>
+    </div>
+    <div class="phase-item" onclick="scrollToPhase(6)" id="pnav-6">
+      <div class="phase-num">FASE 7</div>
+      <div class="phase-name">Pruebas y Ajustes</div>
+      <div class="phase-auto partial">● Semi-automático</div>
+    </div>
+    <div class="phase-item" onclick="scrollToPhase(7)" id="pnav-7">
+      <div class="phase-num">FASE 8</div>
+      <div class="phase-name">Entrega Final</div>
+      <div class="phase-auto partial">● Semi-automático</div>
+    </div>
+  </div>
+
+  <!-- CENTRE: flow -->
+  <div class="flow-col" id="flow-col">
+
+    <!-- PHASE 1 -->
+    <div class="flow-node phase-header" data-phase="0" id="phase-0">
+      <div class="phase-header-inner">
+        <span class="ph-num">FASE 1</span>
+        <span class="ph-title">Primera Consulta</span>
+        <div class="ph-line"></div>
+      </div>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="1_1" onclick="showDetail('1_1')">
+      <div class="node-icon" style="background:#EEE9E2">📱</div>
+      <div class="node-content">
+        <div class="node-title">Cliente contacta</div>
+        <div class="node-desc">WhatsApp · Instagram DM · Web form · Teléfono</div>
+      </div>
+      <span class="node-badge badge-manual">ENTRADA</span>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="1_2" onclick="showDetail('1_2')">
+      <div class="node-icon" style="background:#E6F4ED">🤖</div>
+      <div class="node-content">
+        <div class="node-title">Respuesta automática inmediata</div>
+        <div class="node-desc">Mensaje de bienvenida + formulario de pre-consulta + enlace agenda</div>
+      </div>
+      <span class="node-badge badge-auto">AUTO</span>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="1_3" onclick="showDetail('1_3')">
+      <div class="node-icon" style="background:#E6F4ED">📋</div>
+      <div class="node-content">
+        <div class="node-title">Formulario de pre-consulta</div>
+        <div class="node-desc">Google Form · Fecha boda, tipo vestido, presupuesto, cómo llegó</div>
+      </div>
+      <span class="node-badge badge-auto">AUTO</span>
+    </div>
+    <div class="connector"></div>
+    <div class="connector dashed"></div>
+
+    <!-- PHASE 2 -->
+    <div class="flow-node phase-header" data-phase="1" id="phase-1">
+      <div class="phase-header-inner">
+        <span class="ph-num">FASE 2</span>
+        <span class="ph-title">Cualificación</span>
+        <div class="ph-line"></div>
+      </div>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="2_1" onclick="showDetail('2_1')">
+      <div class="node-icon" style="background:#E6F4ED">📥</div>
+      <div class="node-content">
+        <div class="node-title">Respuestas llegan a tu bandeja</div>
+        <div class="node-desc">Google Sheet order log · Notificación inmediata por email</div>
+      </div>
+      <span class="node-badge badge-auto">AUTO</span>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="2_2" onclick="showDetail('2_2')">
+      <div class="node-icon" style="background:#FBF0E4">👁️</div>
+      <div class="node-content">
+        <div class="node-title">Revisas en 2 minutos</div>
+        <div class="node-desc">¿Fecha disponible? ¿Presupuesto encaja? ¿Es tu estilo?</div>
+      </div>
+      <span class="node-badge badge-you">TÚ</span>
+    </div>
+    <div class="connector"></div>
+
+    <div class="decision">
+      <div class="diamond">¿Avanzar?</div>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="2_3" onclick="showDetail('2_3')">
+      <div class="node-icon" style="background:#E6F4ED">📅</div>
+      <div class="node-content">
+        <div class="node-title">Confirmación y cita agendada</div>
+        <div class="node-desc">Claude redacta respuesta personalizada + Calendly link → Google Calendar</div>
+      </div>
+      <span class="node-badge badge-partial">SEMI-AUTO</span>
+    </div>
+    <div class="connector"></div>
+    <div class="connector dashed"></div>
+
+    <!-- PHASE 3 -->
+    <div class="flow-node phase-header" data-phase="2" id="phase-2">
+      <div class="phase-header-inner">
+        <span class="ph-num">FASE 3</span>
+        <span class="ph-title">Consulta Inicial</span>
+        <div class="ph-line"></div>
+      </div>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="3_1" onclick="showDetail('3_1')">
+      <div class="node-icon" style="background:#E6F4ED">🔔</div>
+      <div class="node-content">
+        <div class="node-title">Recordatorio automático</div>
+        <div class="node-desc">24h antes y 1h antes → WhatsApp + email</div>
+      </div>
+      <span class="node-badge badge-auto">AUTO</span>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="3_2" onclick="showDetail('3_2')">
+      <div class="node-icon" style="background:#1A1714">👗</div>
+      <div class="node-content">
+        <div class="node-title">Reunión contigo</div>
+        <div class="node-desc">Escuchas la visión · Notas rápidas · Referencias · Medidas aproximadas</div>
+      </div>
+      <span class="node-badge badge-you">TÚ</span>
+    </div>
+    <div class="connector"></div>
+    <div class="connector dashed"></div>
+
+    <!-- PHASE 4 -->
+    <div class="flow-node phase-header" data-phase="3" id="phase-3">
+      <div class="phase-header-inner">
+        <span class="ph-num">FASE 4</span>
+        <span class="ph-title">Descubrimiento de Diseño</span>
+        <div class="ph-line"></div>
+      </div>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="4_1" onclick="showDetail('4_1')">
+      <div class="node-icon" style="background:#E6F4ED">📝</div>
+      <div class="node-content">
+        <div class="node-title">Brief → Notas de estilo</div>
+        <div class="node-desc">Me describes la novia → extraigo silueta, tejido, escote, colas, color</div>
+      </div>
+      <span class="node-badge badge-auto">AUTO</span>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="4_2" onclick="showDetail('4_2')">
+      <div class="node-icon" style="background:#E6F4ED">🤖</div>
+      <div class="node-content">
+        <div class="node-title">Generación de prompts IA</div>
+        <div class="node-desc">Prompt realista + prompt ilustración · FLUX.1-Krea-dev</div>
+      </div>
+      <span class="node-badge badge-auto">AUTO</span>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="4_3" onclick="showDetail('4_3')">
+      <div class="node-icon" style="background:#FBF0E4">🔁</div>
+      <div class="node-content">
+        <div class="node-title">Iteración visual contigo</div>
+        <div class="node-desc">Compartes imagen → analizo → refino prompt → repetimos</div>
+      </div>
+      <span class="node-badge badge-partial">SEMI-AUTO</span>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="4_4" onclick="showDetail('4_4')">
+      <div class="node-icon" style="background:#E6F4ED">📊</div>
+      <div class="node-content">
+        <div class="node-title">Deck de propuesta generado</div>
+        <div class="node-desc">5 slides PPTX + PDF · Imágenes + fichas de estilo + próximos pasos</div>
+      </div>
+      <span class="node-badge badge-auto">AUTO</span>
+    </div>
+    <div class="connector"></div>
+    <div class="connector dashed"></div>
+
+    <!-- PHASE 5 -->
+    <div class="flow-node phase-header" data-phase="4" id="phase-4">
+      <div class="phase-header-inner">
+        <span class="ph-num">FASE 5</span>
+        <span class="ph-title">Propuesta y Contrato</span>
+        <div class="ph-line"></div>
+      </div>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="5_1" onclick="showDetail('5_1')">
+      <div class="node-icon" style="background:#E6F4ED">💶</div>
+      <div class="node-content">
+        <div class="node-title">Presupuesto generado</div>
+        <div class="node-desc">Claude genera PDF de presupuesto desde la ficha de diseño</div>
+      </div>
+      <span class="node-badge badge-auto">AUTO</span>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="5_2" onclick="showDetail('5_2')">
+      <div class="node-icon" style="background:#E6F4ED">📄</div>
+      <div class="node-content">
+        <div class="node-title">Contrato de encargo generado</div>
+        <div class="node-desc">Nombre, descripción, fechas, condiciones de pago, señal</div>
+      </div>
+      <span class="node-badge badge-auto">AUTO</span>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="5_3" onclick="showDetail('5_3')">
+      <div class="node-icon" style="background:#FBF0E4">✍️</div>
+      <div class="node-content">
+        <div class="node-title">Aprobación y señal</div>
+        <div class="node-desc">Clienta aprueba y paga señal → orden de producción activada</div>
+      </div>
+      <span class="node-badge badge-partial">SEMI-AUTO</span>
+    </div>
+    <div class="connector"></div>
+    <div class="connector dashed"></div>
+
+    <!-- PHASE 6 -->
+    <div class="flow-node phase-header" data-phase="5" id="phase-5">
+      <div class="phase-header-inner">
+        <span class="ph-num">FASE 6</span>
+        <span class="ph-title">Producción</span>
+        <div class="ph-line"></div>
+      </div>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="6_1" onclick="showDetail('6_1')">
+      <div class="node-icon" style="background:#E6F4ED">📦</div>
+      <div class="node-content">
+        <div class="node-title">Check de materiales</div>
+        <div class="node-desc">Hoja de inventario verifica stock → alerta si hay que pedir</div>
+      </div>
+      <span class="node-badge badge-auto">AUTO</span>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="6_2" onclick="showDetail('6_2')">
+      <div class="node-icon" style="background:#1A1714">✂️</div>
+      <div class="node-content">
+        <div class="node-title">Tú produces el vestido</div>
+        <div class="node-desc">Patronaje · Corte · Costura · Acabados</div>
+      </div>
+      <span class="node-badge badge-you">TÚ</span>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="6_3" onclick="showDetail('6_3')">
+      <div class="node-icon" style="background:#E6F4ED">💬</div>
+      <div class="node-content">
+        <div class="node-title">Actualizaciones de estado</div>
+        <div class="node-desc">Claude envía update a la clienta en cada fase: corte → costura → acabado</div>
+      </div>
+      <span class="node-badge badge-auto">AUTO</span>
+    </div>
+    <div class="connector"></div>
+    <div class="connector dashed"></div>
+
+    <!-- PHASE 7 -->
+    <div class="flow-node phase-header" data-phase="6" id="phase-6">
+      <div class="phase-header-inner">
+        <span class="ph-num">FASE 7</span>
+        <span class="ph-title">Pruebas y Ajustes</span>
+        <div class="ph-line"></div>
+      </div>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="7_1" onclick="showDetail('7_1')">
+      <div class="node-icon" style="background:#E6F4ED">📅</div>
+      <div class="node-content">
+        <div class="node-title">Citas de prueba agendadas</div>
+        <div class="node-desc">Calendly link en mensaje de actualización → confirmación automática</div>
+      </div>
+      <span class="node-badge badge-auto">AUTO</span>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="7_2" onclick="showDetail('7_2')">
+      <div class="node-icon" style="background:#1A1714">👗</div>
+      <div class="node-content">
+        <div class="node-title">Prueba en atelier</div>
+        <div class="node-desc">1ª prueba · Ajustes · 2ª prueba si necesario</div>
+      </div>
+      <span class="node-badge badge-you">TÚ</span>
+    </div>
+    <div class="connector"></div>
+    <div class="connector dashed"></div>
+
+    <!-- PHASE 8 -->
+    <div class="flow-node phase-header" data-phase="7" id="phase-7">
+      <div class="phase-header-inner">
+        <span class="ph-num">FASE 8</span>
+        <span class="ph-title">Entrega Final</span>
+        <div class="ph-line"></div>
+      </div>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="8_1" onclick="showDetail('8_1')">
+      <div class="node-icon" style="background:#E6F4ED">🧾</div>
+      <div class="node-content">
+        <div class="node-title">Factura final enviada</div>
+        <div class="node-desc">PDF automático · Saldo pendiente · Link de pago (Stripe / PayPal)</div>
+      </div>
+      <span class="node-badge badge-auto">AUTO</span>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="8_2" onclick="showDetail('8_2')">
+      <div class="node-icon" style="background:#1A1714">🎀</div>
+      <div class="node-content">
+        <div class="node-title">Entrega del vestido</div>
+        <div class="node-desc">Momento tuyo con la clienta</div>
+      </div>
+      <span class="node-badge badge-you">TÚ</span>
+    </div>
+    <div class="connector"></div>
+
+    <div class="flow-node" data-id="8_3" onclick="showDetail('8_3')">
+      <div class="node-icon" style="background:#E6F4ED">⭐</div>
+      <div class="node-content">
+        <div class="node-title">Follow-up post-boda</div>
+        <div class="node-desc">Mensaje automático 2 semanas después · Pide reseña / foto</div>
+      </div>
+      <span class="node-badge badge-auto">AUTO</span>
+    </div>
+    <div style="height:40px"></div>
+
+  </div>
+
+  <!-- RIGHT: detail panel -->
+  <div class="detail-col" id="detail-col">
+    <div class="detail-placeholder">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="20" stroke="#C8C0B8" stroke-width="2"/><path d="M24 16v8M24 28v4" stroke="#C8C0B8" stroke-width="2" stroke-linecap="round"/></svg>
+      <p>Haz clic en cualquier paso del flujo para ver el detalle, herramientas y cómo automatizarlo.</p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const details = {
+  '1_1': {
+    tag: 'FASE 1 · ENTRADA',
+    title: 'Cliente contacta',
+    auto: 0,
+    sections: [
+      { label: 'CANALES DE ENTRADA', html: `<div style="display:flex;flex-wrap:wrap;gap:6px">
+        <span class="tool-chip">📱 WhatsApp Business</span>
+        <span class="tool-chip">📸 Instagram DM</span>
+        <span class="tool-chip">🌐 Web Form</span>
+        <span class="tool-chip">📞 Teléfono</span>
+      </div>` },
+      { label: 'ESTADO ACTUAL', html: `<p>Todos los canales llegan a ti sin filtro, mezclados con mensajes personales. Sin orden ni prioridad.</p>` },
+      { label: 'OBJETIVO', html: `<p>Que cada canal tenga una respuesta automática que recoja la consulta de forma estructurada antes de que llegue a ti.</p>` }
+    ]
+  },
+  '1_2': {
+    tag: 'FASE 1 · AUTO',
+    title: 'Respuesta automática',
+    auto: 90,
+    sections: [
+      { label: 'HERRAMIENTAS', html: `<div style="display:flex;flex-wrap:wrap;gap:6px">
+        <span class="tool-chip free">WhatsApp Business (gratis)</span>
+        <span class="tool-chip free">Instagram Auto-reply (gratis)</span>
+        <span class="tool-chip free">Gmail Auto-responder (gratis)</span>
+      </div>` },
+      { label: 'MENSAJE TIPO', html: `<div class="msg-template">"Hola 🤍 Gracias por contactar con el atelier. Estoy en producción pero me encantaría conocer tu proyecto. Rellena este formulario (2 min) y te respondo en menos de 24h con disponibilidad y siguiente paso → [enlace]"</div>` },
+      { label: 'QUÉ AUTOMATIZAR', html: `<ul><li>WhatsApp Business → Mensaje de bienvenida + link formulario</li><li>Instagram → Respuesta automática en DMs con link web</li><li>Web form → Email de confirmación inmediato</li></ul>` }
+    ]
+  },
+  '1_3': {
+    tag: 'FASE 1 · AUTO',
+    title: 'Formulario de pre-consulta',
+    auto: 95,
+    sections: [
+      { label: 'HERRAMIENTA', html: `<span class="tool-chip free">Google Forms (gratis con Workspace)</span>` },
+      { label: 'CAMPOS', html: `<ul><li>Nombre completo</li><li>Email + WhatsApp</li><li>Fecha de la boda</li><li>¿Qué tipo de vestido buscas?</li><li>Presupuesto aproximado</li><li>¿Cómo nos conociste?</li><li>Cuéntame tu visión (texto libre)</li></ul>` },
+      { label: 'LO QUE PASA AL ENVIARLO', html: `<ul><li>Respuestas → Google Sheet "Consultas" automáticamente</li><li>Tú recibes notificación inmediata por email</li><li>Clienta recibe email de confirmación</li></ul>` }
+    ]
+  },
+  '2_1': {
+    tag: 'FASE 2 · AUTO',
+    title: 'Respuestas en tu bandeja',
+    auto: 100,
+    sections: [
+      { label: 'HERRAMIENTA', html: `<div style="display:flex;flex-wrap:wrap;gap:6px"><span class="tool-chip free">Google Sheets</span><span class="tool-chip free">Google Forms</span></div>` },
+      { label: 'COLUMNAS DEL SHEET', html: `<ul><li>Fecha · Nombre · Email · WhatsApp</li><li>Fecha boda · Tipo vestido · Presupuesto</li><li>Cómo llegó · Visión libre</li><li><strong>Estado</strong> (Nueva / En revisión / Confirmada / Rechazada)</li><li><strong>Notas tuyas</strong></li></ul>` },
+      { label: 'NOTIFICACIÓN', html: `<p>Google Forms → Tools → Notification rules → "When form submitted → immediately" → email a ti.</p>` }
+    ]
+  },
+  '2_2': {
+    tag: 'FASE 2 · TÚ',
+    title: 'Revisión rápida (2 min)',
+    auto: 0,
+    sections: [
+      { label: 'QUÉ DECIDES', html: `<ul><li>¿La fecha está disponible en mi agenda?</li><li>¿El presupuesto encaja con mis precios?</li><li>¿Es el estilo de proyecto que quiero hacer?</li></ul>` },
+      { label: 'RESULTADO', html: `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px"><span class="tool-chip free">✓ Avanzar → respuesta confirmación</span><span class="tool-chip" style="background:#FDECEA;color:#C0392B">✗ No avanzar → respuesta amable de no disponibilidad</span></div>` },
+      { label: 'TU TIEMPO REAL', html: `<p>El objetivo es que esta decisión te lleve <strong>menos de 2 minutos</strong> porque toda la info ya está estructurada en el Sheet.</p>` }
+    ]
+  },
+  '2_3': {
+    tag: 'FASE 2 · SEMI-AUTO',
+    title: 'Confirmación y cita agendada',
+    auto: 70,
+    sections: [
+      { label: 'HERRAMIENTAS', html: `<div style="display:flex;flex-wrap:wrap;gap:6px"><span class="tool-chip free">Calendly (gratis)</span><span class="tool-chip free">Google Calendar</span><span class="tool-chip free">Gmail</span></div>` },
+      { label: 'FLUJO', html: `<ul class="step-list">
+        <li><div class="step-num-badge">1</div>Claude redacta email personalizado con link Calendly</li>
+        <li><div class="step-num-badge">2</div>Tú revisas y envías con un clic</li>
+        <li><div class="step-num-badge">3</div>Clienta elige franja → aparece en Google Calendar</li>
+        <li><div class="step-num-badge">4</div>Confirmación automática + recordatorio 24h antes</li>
+      </ul>` },
+      { label: 'BLOQUES DE PRODUCCIÓN', html: `<p>Bloquea tus horas de producción en Google Calendar (ej: Lun–Vie 9–14h como evento recurrente "Producción"). Calendly los verá como ocupados y nunca ofrecerá esas franjas.</p>` }
+    ]
+  },
+  '3_1': {
+    tag: 'FASE 3 · AUTO',
+    title: 'Recordatorios automáticos',
+    auto: 100,
+    sections: [
+      { label: 'HERRAMIENTA', html: `<span class="tool-chip free">Calendly (incluido en plan gratuito)</span>` },
+      { label: 'SECUENCIA', html: `<ul><li><strong>24h antes:</strong> Email + WhatsApp con dirección, qué traer (fotos ref, medidas si tiene)</li><li><strong>1h antes:</strong> Recordatorio breve de confirmación</li></ul>` },
+      { label: 'MENSAJE TIPO 24H', html: `<div class="msg-template">"Te esperamos mañana a las [hora] en el atelier 🤍 Si tienes fotos de referencias o vestidos que te inspiran, tráelas — nos ayuda mucho en la consulta. Dirección: [dirección]"</div>` }
+    ]
+  },
+  '3_2': {
+    tag: 'FASE 3 · TÚ',
+    title: 'Reunión de consulta',
+    auto: 0,
+    sections: [
+      { label: 'QUÉ RECOGES', html: `<ul><li>Visión y personalidad de la novia</li><li>Referencias e inspiraciones</li><li>Detalles del vestido (silueta, tejidos, detalles)</li><li>Fecha límite de entrega</li><li>Medidas aproximadas (o exactas si es posible)</li></ul>` },
+      { label: 'DESPUÉS DE LA REUNIÓN', html: `<p>Describes la novia en el chat (libre o con la plantilla de brief) → arranca la Fase 4 de Descubrimiento de Diseño automáticamente.</p>` }
+    ]
+  },
+  '4_1': {
+    tag: 'FASE 4 · AUTO',
+    title: 'Brief → Notas de estilo',
+    auto: 95,
+    sections: [
+      { label: 'CÓMO FUNCIONA', html: `<p>Me describes la novia en texto libre o con la plantilla. Extraigo silueta, escote, tejidos, cola, capa, color y concepto general.</p>` },
+      { label: 'OUTPUT', html: `<div class="msg-template">PERFIL: 30 años · Junio · España interior
+CONCEPTO: Sofisticación estructurada con ligereza veraniega
+
+VESTIDO
+— Silueta: Corte A desde la cintura
+— Escote: Cuadrado
+— Tejido: Crepé marfil
+— Cola: 70 cm
+— Color: Marfil cálido</div>` }
+    ]
+  },
+  '4_2': {
+    tag: 'FASE 4 · AUTO',
+    title: 'Generación de prompts IA',
+    auto: 100,
+    sections: [
+      { label: 'HERRAMIENTA', html: `<a href="https://huggingface.co/spaces/mcp-tools/FLUX.1-Krea-dev" target="_blank" style="color:#B8966E;font-size:12px">FLUX.1-Krea-dev en Hugging Face →</a>` },
+      { label: 'DOS PROMPTS POR SESIÓN', html: `<ul><li><strong>Realista fotográfico</strong> — para que la clienta vea el vestido "real"</li><li><strong>Ilustración de moda</strong> — para el boceto del atelier</li></ul>` },
+      { label: 'TAMAÑO', html: `<span class="tool-chip">768 × 1024px (portrait)</span>` }
+    ]
+  },
+  '4_3': {
+    tag: 'FASE 4 · SEMI-AUTO',
+    title: 'Iteración visual',
+    auto: 60,
+    sections: [
+      { label: 'EL BUCLE', html: `<ul class="step-list">
+        <li><div class="step-num-badge">1</div>Generas imagen con el prompt</li>
+        <li><div class="step-num-badge">2</div>Me la compartes aquí</li>
+        <li><div class="step-num-badge">3</div>Analizo qué funciona y qué no</li>
+        <li><div class="step-num-badge">4</div>Nuevo prompt refinado</li>
+        <li><div class="step-num-badge">5</div>Repetir hasta tener 2-3 vistas aprobadas</li>
+      </ul>` },
+      { label: 'OBJETIVO MÍNIMO', html: `<div style="display:flex;gap:6px;flex-wrap:wrap"><span class="tool-chip free">Vista frontal realista</span><span class="tool-chip free">Vista trasera realista</span><span class="tool-chip free">Boceto ilustración</span></div>` }
+    ]
+  },
+  '4_4': {
+    tag: 'FASE 4 · AUTO',
+    title: 'Deck de propuesta generado',
+    auto: 95,
+    sections: [
+      { label: 'OUTPUT', html: `<div style="display:flex;gap:6px;flex-wrap:wrap"><span class="tool-chip free">Propuesta_Vestido_Novia.pptx</span><span class="tool-chip free">Propuesta_Vestido_Novia.pdf</span></div>` },
+      { label: 'ESTRUCTURA', html: `<ul><li>Slide 1: Portada</li><li>Slide 2: El Vestido + fichas estilo</li><li>Slide 3: La Capa + notas detalle</li><li>Slide 4: Boceto + Próximos pasos</li><li>Slide 5: Cierre</li></ul>` },
+      { label: 'USO', html: `<p>El PPTX lo presentas en la reunión. El PDF se lo envías a la clienta después.</p>` }
+    ]
+  },
+  '5_1': {
+    tag: 'FASE 5 · AUTO',
+    title: 'Presupuesto generado',
+    auto: 85,
+    sections: [
+      { label: 'HERRAMIENTA', html: `<span class="tool-chip free">Claude + Google Docs / PDF</span>` },
+      { label: 'QUÉ INCLUYE', html: `<ul><li>Descripción del vestido acordado</li><li>Precio total desglosado</li><li>Señal requerida (% acordado)</li><li>Saldo en fecha acordada</li><li>Plazo de entrega</li></ul>` },
+      { label: 'FLUJO', html: `<p>Me das los datos del encargo → genero el PDF → tú revisas → envías a la clienta.</p>` }
+    ]
+  },
+  '5_2': {
+    tag: 'FASE 5 · AUTO',
+    title: 'Contrato de encargo',
+    auto: 85,
+    sections: [
+      { label: 'HERRAMIENTA', html: `<span class="tool-chip free">Claude + PDF / Word</span>` },
+      { label: 'CLÁUSULAS TIPO', html: `<ul><li>Descripción del encargo y especificaciones</li><li>Condiciones de pago y señal</li><li>Fechas de pruebas y entrega</li><li>Política de cambios y cancelación</li><li>Derechos de imagen</li></ul>` },
+      { label: 'NOTA', html: `<p>La primera vez definimos juntos el contrato base. A partir de ahí lo personalizo para cada clienta en segundos.</p>` }
+    ]
+  },
+  '5_3': {
+    tag: 'FASE 5 · SEMI-AUTO',
+    title: 'Aprobación y señal',
+    auto: 40,
+    sections: [
+      { label: 'HERRAMIENTAS', html: `<div style="display:flex;flex-wrap:wrap;gap:6px"><span class="tool-chip cost">Stripe (2.9% + 0.25€)</span><span class="tool-chip cost">PayPal (similar)</span><span class="tool-chip">Transferencia bancaria</span></div>` },
+      { label: 'FLUJO', html: `<ul class="step-list">
+        <li><div class="step-num-badge">1</div>Clienta recibe presupuesto + contrato por email</li>
+        <li><div class="step-num-badge">2</div>Aprueba y paga señal (link de pago en el email)</li>
+        <li><div class="step-num-badge">3</div>Confirmación automática de pago recibido</li>
+        <li><div class="step-num-badge">4</div>Orden de producción activa en tu Google Sheet</li>
+      </ul>` }
+    ]
+  },
+  '6_1': {
+    tag: 'FASE 6 · AUTO',
+    title: 'Check de materiales',
+    auto: 90,
+    sections: [
+      { label: 'HERRAMIENTA', html: `<span class="tool-chip free">Google Sheets + Apps Script</span>` },
+      { label: 'CÓMO FUNCIONA', html: `<p>Al activar la orden, el script comprueba si hay stock suficiente de los materiales necesarios. Si algo está por debajo del mínimo, recibes email de alerta automático.</p>` },
+      { label: 'ALERTA TIPO', html: `<div class="msg-template">⚠️ Stock bajo — reorder needed
+• Crepé marfil: solo 3m (mín: 8m) — Proveedor X
+• Hilo seda: 0 unidades — Mercería Y</div>` }
+    ]
+  },
+  '6_2': {
+    tag: 'FASE 6 · TÚ',
+    title: 'Tú produces el vestido',
+    auto: 0,
+    sections: [
+      { label: 'FASES DE PRODUCCIÓN', html: `<ul><li>Patronaje y trazado</li><li>Corte de tejidos</li><li>Costura y construcción</li><li>Acabados y detalles</li><li>Preparación para prueba</li></ul>` },
+      { label: 'TU TIEMPO', html: `<p>Todo lo demás está automatizado para que este tiempo sea <strong>exclusivamente tuyo</strong> — sin interrupciones de gestión.</p>` }
+    ]
+  },
+  '6_3': {
+    tag: 'FASE 6 · AUTO',
+    title: 'Actualizaciones de estado',
+    auto: 95,
+    sections: [
+      { label: 'HERRAMIENTA', html: `<span class="tool-chip free">Claude + WhatsApp / Email</span>` },
+      { label: 'MENSAJES POR FASE', html: `<div class="msg-template">"Tu vestido ya está en la fase de corte 🤍 Todo va según lo planificado. Te avisaré cuando esté listo para la primera prueba."</div>` },
+      { label: 'CÓMO FUNCIONA', html: `<p>Cambias el estado en el Google Sheet (Corte → Costura → Acabado → Listo para prueba) → yo genero el mensaje → tú lo envías con un clic.</p>` }
+    ]
+  },
+  '7_1': {
+    tag: 'FASE 7 · AUTO',
+    title: 'Citas de prueba agendadas',
+    auto: 95,
+    sections: [
+      { label: 'HERRAMIENTA', html: `<span class="tool-chip free">Calendly + Google Calendar</span>` },
+      { label: 'FLUJO', html: `<p>El mensaje de "listo para prueba" incluye link Calendly. La clienta elige su franja. Aparece en tu calendario automáticamente con recordatorios.</p>` }
+    ]
+  },
+  '7_2': {
+    tag: 'FASE 7 · TÚ',
+    title: 'Prueba en atelier',
+    auto: 0,
+    sections: [
+      { label: 'CUÁNTAS PRUEBAS', html: `<ul><li><strong>1ª prueba:</strong> Ajuste general, toma de medidas finas</li><li><strong>2ª prueba</strong> (si necesaria): Verificación de ajustes</li><li><strong>Prueba final:</strong> Antes de entrega</li></ul>` },
+      { label: 'POST-PRUEBA', html: `<p>Me indicas qué ajustes hay que hacer → actualizo la ficha del encargo → vuelves a producción.</p>` }
+    ]
+  },
+  '8_1': {
+    tag: 'FASE 8 · AUTO',
+    title: 'Factura final enviada',
+    auto: 90,
+    sections: [
+      { label: 'HERRAMIENTA', html: `<div style="display:flex;flex-wrap:wrap;gap:6px"><span class="tool-chip free">Claude + PDF</span><span class="tool-chip cost">Stripe / PayPal</span></div>` },
+      { label: 'INCLUYE', html: `<ul><li>Factura con todos los datos fiscales</li><li>Saldo pendiente (total menos señal pagada)</li><li>Link de pago directo</li></ul>` },
+      { label: 'AUTOMATIZACIÓN', html: `<p>Al marcar "Listo para entrega" en el Sheet → se genera la factura → tú la revisas → la envías con un clic.</p>` }
+    ]
+  },
+  '8_2': {
+    tag: 'FASE 8 · TÚ',
+    title: 'Entrega del vestido',
+    auto: 0,
+    sections: [
+      { label: 'EL MOMENTO', html: `<p>La entrega es tuya. Es el momento de mayor valor emocional para la clienta — nada que automatizar aquí.</p>` },
+      { label: 'DESPUÉS', html: `<p>Actualiza el estado del encargo en el Sheet a "Entregado" → arranca automáticamente el follow-up post-boda.</p>` }
+    ]
+  },
+  '8_3': {
+    tag: 'FASE 8 · AUTO',
+    title: 'Follow-up post-boda',
+    auto: 95,
+    sections: [
+      { label: 'CUÁNDO', html: `<p>2 semanas después de la fecha de boda registrada → mensaje automático.</p>` },
+      { label: 'MENSAJE TIPO', html: `<div class="msg-template">"Espero que vuestra boda haya sido absolutamente mágica 🤍 Si tienes alguna foto con el vestido, me haría muy feliz verla. Y si quisieras dejar una reseña sobre tu experiencia en el atelier, sería de gran ayuda: [link]. Gracias por confiar en mí para este momento tan especial."</div>` },
+      { label: 'OBJETIVO', html: `<ul><li>Reseñas en Google / Instagram</li><li>Fotos para portfolio</li><li>Referidos para nuevas clientas</li></ul>` }
+    ]
+  }
+};
+
+function showDetail(id) {
+  const d = details[id];
+  if (!d) return;
+
+  // Highlight active node
+  document.querySelectorAll('.flow-node').forEach(n => n.classList.remove('active'));
+  const node = document.querySelector(`[data-id="${id}"]`);
+  if (node) node.classList.add('active');
+
+  const col = document.getElementById('detail-col');
+  const autoPercent = d.auto || 0;
+  const autoColor = autoPercent >= 80 ? '#6BAB8A' : autoPercent >= 40 ? '#B8966E' : '#7A746E';
+  const autoLabel = autoPercent >= 80 ? 'Muy automatizable' : autoPercent >= 40 ? 'Semi-automático' : autoPercent === 0 ? 'Trabajo tuyo' : 'Poco automatizable';
+
+  col.innerHTML = `<div class="detail-content">
+    <div class="detail-header">
+      <div class="detail-tag">${d.tag}</div>
+      <div class="detail-title">${d.title}</div>
+      ${autoPercent > 0 ? `
+      <div style="margin-top:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+          <span style="font-size:10px;color:#7A746E;letter-spacing:1px">POTENCIAL DE AUTOMATIZACIÓN</span>
+          <span style="font-size:11px;font-weight:600;color:${autoColor}">${autoPercent}%</span>
+        </div>
+        <div class="auto-bar"><div class="auto-fill" style="width:${autoPercent}%;background:${autoColor}"></div></div>
+        <div style="font-size:10px;color:${autoColor};margin-top:4px;letter-spacing:0.5px">${autoLabel}</div>
+      </div>` : `<div style="margin-top:8px;font-size:11px;color:#B8966E;letter-spacing:1px">⭐ ESTO LO HACES TÚ</div>`}
+    </div>
+    ${d.sections.map(s => `
+      <div class="detail-section">
+        <div class="section-label">${s.label}</div>
+        ${s.html}
+      </div>
+    `).join('')}
+  </div>`;
+}
+
+function scrollToPhase(index) {
+  const el = document.getElementById(`phase-${index}`);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.querySelectorAll('.phase-item').forEach((p, i) => p.classList.toggle('active', i === index));
+}
+
+// Update left nav on scroll
+const flowCol = document.getElementById('flow-col');
+flowCol.addEventListener('scroll', () => {
+  const phases = document.querySelectorAll('[id^="phase-"]');
+  const scrollTop = flowCol.scrollTop;
+  let current = 0;
+  phases.forEach((p, i) => {
+    if (p.offsetTop - flowCol.offsetTop <= scrollTop + 60) current = i;
+  });
+  document.querySelectorAll('.phase-item').forEach((p, i) => p.classList.toggle('active', i === current));
+});
+</script>
+</body>
+</html>

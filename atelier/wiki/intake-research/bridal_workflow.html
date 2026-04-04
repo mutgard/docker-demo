@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bridal Atelier — Workflow</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Georgia', serif;
+    background: #F8F5F0;
+    color: #1A1714;
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: #1A1714;
+    color: #F8F5F0;
+    padding: 28px 48px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-title { font-size: 13px; letter-spacing: 4px; color: #B8966E; font-family: 'Helvetica Neue', sans-serif; font-weight: 400; }
+  .header-sub { font-size: 22px; font-weight: 700; margin-top: 4px; }
+  .header-tag { font-size: 11px; letter-spacing: 2px; color: #7A746E; font-family: 'Helvetica Neue', sans-serif; }
+
+  /* ── Main layout ── */
+  .container { padding: 48px; max-width: 1400px; margin: 0 auto; }
+
+  /* ── Pipeline row ── */
+  .pipeline {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 56px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+  }
+
+  .step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .step-bubble {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    transition: all 0.25s ease;
+    border: 2px solid transparent;
+    position: relative;
+    z-index: 1;
+  }
+
+  .step:hover .step-bubble,
+  .step.active .step-bubble {
+    transform: scale(1.12);
+    border-color: #B8966E;
+    box-shadow: 0 0 0 4px rgba(184,150,110,0.15);
+  }
+
+  .step-label {
+    margin-top: 10px;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-align: center;
+    color: #7A746E;
+    font-family: 'Helvetica Neue', sans-serif;
+    font-weight: 500;
+    max-width: 90px;
+    line-height: 1.4;
+    transition: color 0.2s;
+  }
+
+  .step.active .step-label { color: #B8966E; }
+
+  .step-num {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #B8966E;
+    color: white;
+    font-size: 10px;
+    font-family: 'Helvetica Neue', sans-serif;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
+
+  .arrow {
+    flex-shrink: 0;
+    width: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-bottom: 28px;
+  }
+
+  .arrow svg { color: #C8C0B8; }
+
+  /* Step colours */
+  .s1 .step-bubble { background: #2C2926; }
+  .s2 .step-bubble { background: #3D3530; }
+  .s3 .step-bubble { background: #4E4640; }
+  .s4 .step-bubble { background: #5C534C; }
+  .s5 .step-bubble { background: #6B615A; }
+  .s6 .step-bubble { background: #B8966E; }
+
+  /* ── Detail panel ── */
+  .detail-panel {
+    background: white;
+    border-radius: 2px;
+    box-shadow: 0 2px 24px rgba(0,0,0,0.07);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    min-height: 420px;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 28px 36px;
+    border-bottom: 1px solid #EEE9E2;
+  }
+
+  .panel-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+  }
+
+  .panel-title-group { flex: 1; }
+  .panel-step-tag { font-size: 10px; letter-spacing: 2.5px; color: #B8966E; font-family: 'Helvetica Neue', sans-serif; font-weight: 600; margin-bottom: 4px; }
+  .panel-title { font-size: 22px; font-weight: 700; }
+  .panel-subtitle { font-size: 13px; color: #7A746E; margin-top: 3px; font-family: 'Helvetica Neue', sans-serif; }
+
+  .panel-body { padding: 32px 36px; display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+
+  .panel-section h3 {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: #B8966E;
+    font-family: 'Helvetica Neue', sans-serif;
+    font-weight: 600;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .panel-section p, .panel-section li {
+    font-size: 14px;
+    color: #3D3530;
+    line-height: 1.7;
+    font-family: 'Helvetica Neue', sans-serif;
+  }
+
+  .panel-section ul { padding-left: 16px; }
+  .panel-section li { margin-bottom: 4px; }
+
+  .tag-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .tag {
+    background: #F2EDE6;
+    color: #5C534C;
+    font-size: 11px;
+    font-family: 'Helvetica Neue', sans-serif;
+    padding: 4px 10px;
+    border-radius: 2px;
+    letter-spacing: 0.5px;
+  }
+  .tag.gold { background: #B8966E; color: white; }
+  .tag.dark { background: #2C2926; color: #F8F5F0; }
+
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #3D3530;
+    font-family: 'Helvetica Neue', sans-serif;
+    line-height: 1.5;
+  }
+  .checklist li::before {
+    content: '';
+    width: 16px;
+    height: 16px;
+    border: 1.5px solid #B8966E;
+    border-radius: 2px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .code-block {
+    background: #1A1714;
+    color: #E8E4DF;
+    border-radius: 2px;
+    padding: 14px 16px;
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    line-height: 1.6;
+    margin-top: 8px;
+    overflow-x: auto;
+  }
+
+  .tip-box {
+    background: #FBF7F2;
+    border-left: 3px solid #B8966E;
+    padding: 12px 16px;
+    margin-top: 12px;
+    border-radius: 0 2px 2px 0;
+  }
+  .tip-box p {
+    font-size: 12.5px;
+    color: #5C534C;
+    font-family: 'Helvetica Neue', sans-serif;
+    line-height: 1.6;
+    font-style: italic;
+  }
+
+  /* ── Prompt card ── */
+  .prompt-card {
+    background: #F8F5F0;
+    border: 1px solid #E8E4DF;
+    border-radius: 2px;
+    padding: 16px;
+    margin-top: 8px;
+  }
+  .prompt-card h4 {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: #B8966E;
+    font-family: 'Helvetica Neue', sans-serif;
+    font-weight: 600;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  .prompt-card p {
+    font-size: 12px;
+    font-family: 'Courier New', monospace;
+    color: #3D3530;
+    line-height: 1.7;
+  }
+
+  /* ── Slide preview strip ── */
+  .slide-strip { display: flex; gap: 12px; margin-top: 12px; overflow-x: auto; padding-bottom: 4px; }
+  .slide-thumb {
+    flex-shrink: 0;
+    width: 110px;
+    background: #1A1714;
+    border-radius: 2px;
+    padding: 10px 8px;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: border-color 0.2s;
+  }
+  .slide-thumb:hover { border-color: #B8966E; }
+  .slide-thumb .slide-num { font-size: 9px; color: #B8966E; font-family: 'Helvetica Neue', sans-serif; letter-spacing: 1.5px; font-weight: 600; margin-bottom: 4px; }
+  .slide-thumb .slide-name { font-size: 11px; color: #E8E4DF; font-family: 'Georgia', serif; line-height: 1.3; }
+
+  /* ── Full width panel section ── */
+  .panel-body.full { grid-template-columns: 1fr; }
+  .panel-body.thirds { grid-template-columns: 1fr 1fr 1fr; }
+
+  /* ── Nav dots ── */
+  .nav-dots { display: flex; gap: 8px; align-items: center; }
+  .nav-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #C8C0B8; cursor: pointer; transition: background 0.2s;
+    border: none; padding: 0;
+  }
+  .nav-dot.active { background: #B8966E; }
+
+  .panel-footer {
+    padding: 16px 36px;
+    border-top: 1px solid #EEE9E2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .btn {
+    background: none;
+    border: 1px solid #E8E4DF;
+    padding: 8px 18px;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    color: #7A746E;
+    font-family: 'Helvetica Neue', sans-serif;
+    cursor: pointer;
+    border-radius: 1px;
+    transition: all 0.2s;
+  }
+  .btn:hover { border-color: #B8966E; color: #B8966E; }
+  .btn.gold { background: #B8966E; border-color: #B8966E; color: white; }
+  .btn.gold:hover { background: #A07B58; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title">ATELIER</div>
+    <div class="header-sub">Bridal Discovery Workflow</div>
+  </div>
+  <div class="header-tag">PLANIFICACIÓN DE PROCESO</div>
+</div>
+
+<div class="container">
+
+  <!-- Pipeline -->
+  <div class="pipeline">
+
+    <div class="step s1 active" onclick="showStep(0)">
+      <div class="step-bubble">📋<span class="step-num">1</span></div>
+      <div class="step-label">BRIEF DE NOVIA</div>
+    </div>
+    <div class="arrow"><svg width="24" height="12" viewBox="0 0 24 12" fill="none"><path d="M0 6h20M16 2l4 4-4 4" stroke="#C8C0B8" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+
+    <div class="step s2" onclick="showStep(1)">
+      <div class="step-bubble">✏️<span class="step-num">2</span></div>
+      <div class="step-label">NOTAS DE ESTILO</div>
+    </div>
+    <div class="arrow"><svg width="24" height="12" viewBox="0 0 24 12" fill="none"><path d="M0 6h20M16 2l4 4-4 4" stroke="#C8C0B8" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+
+    <div class="step s3" onclick="showStep(2)">
+      <div class="step-bubble">🤖<span class="step-num">3</span></div>
+      <div class="step-label">PROMPTS IA</div>
+    </div>
+    <div class="arrow"><svg width="24" height="12" viewBox="0 0 24 12" fill="none"><path d="M0 6h20M16 2l4 4-4 4" stroke="#C8C0B8" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+
+    <div class="step s4" onclick="showStep(3)">
+      <div class="step-bubble">🔁<span class="step-num">4</span></div>
+      <div class="step-label">ITERACIÓN VISUAL</div>
+    </div>
+    <div class="arrow"><svg width="24" height="12" viewBox="0 0 24 12" fill="none"><path d="M0 6h20M16 2l4 4-4 4" stroke="#C8C0B8" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+
+    <div class="step s5" onclick="showStep(4)">
+      <div class="step-bubble">📊<span class="step-num">5</span></div>
+      <div class="step-label">DECK DE PROPUESTA</div>
+    </div>
+    <div class="arrow"><svg width="24" height="12" viewBox="0 0 24 12" fill="none"><path d="M0 6h20M16 2l4 4-4 4" stroke="#C8C0B8" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+
+    <div class="step s6" onclick="showStep(5)">
+      <div class="step-bubble">👗<span class="step-num">6</span></div>
+      <div class="step-label">PRODUCCIÓN</div>
+    </div>
+
+  </div>
+
+  <!-- Detail panel -->
+  <div class="detail-panel" id="detail-panel">
+    <!-- content injected by JS -->
+  </div>
+
+</div>
+
+<script>
+const steps = [
+  {
+    icon: '📋',
+    tag: 'PASO 1',
+    title: 'Brief de Novia',
+    subtitle: 'Captura la visión de la clienta — libre o estructurado',
+    color: '#2C2926',
+    sections: [
+      {
+        title: 'QUÉ SE EXTRAE',
+        content: `<ul class="checklist">
+          <li>Silueta (corte A, sirena, columna, princesa)</li>
+          <li>Escote (cuadrado, V, palabra de honor, off-shoulder)</li>
+          <li>Tejidos (crepé, gasa, popelín, seda, encaje, tul)</li>
+          <li>Cola — longitud en cm/metros + estilo</li>
+          <li>Capa / overlay — cobertura y transparencia</li>
+          <li>Temporada y lugar (mes, país, interior/exterior)</li>
+          <li>Perfil de la novia — edad, estilo, referencias</li>
+          <li>Color (marfil, blanco roto, blanco óptico…)</li>
+        </ul>`
+      },
+      {
+        title: 'PLANTILLA DE BRIEF',
+        content: `<div class="code-block">NOVIA
+Edad:
+Boda: [mes, país, interior/exterior]
+Estilo: [romántico, minimalista, dramático…]
+
+VESTIDO
+Silueta:
+Escote:
+Tejido base:
+Cola: [longitud]
+Color:
+
+CAPA / OVERLAY
+Tejido:
+Panel frontal:
+Cola trasera:
+
+REFERENCIAS</div>
+<div class="tip-box"><p>💡 También puedes describirme la novia a tu aire — no hace falta rellenar la plantilla. Acepto español e inglés, y cualquier nivel de detalle.</p></div>`
+      }
+    ]
+  },
+  {
+    icon: '✏️',
+    tag: 'PASO 2',
+    title: 'Notas de Estilo',
+    subtitle: 'Traducir el brief en ficha de diseño estructurada',
+    color: '#3D3530',
+    sections: [
+      {
+        title: 'FORMATO DE FICHA',
+        content: `<div class="code-block">PERFIL: [edad, mes, país]
+CONCEPTO: [frase de diseño]
+
+VESTIDO
+— Silueta: Corte A, fluida desde la cintura
+— Escote: Cuadrado — moderno, clavícula
+— Tejido: Crepé marfil
+— Cola: 70 cm integrada en el vuelo
+— Color: Marfil cálido / blanco roto
+
+CAPA
+— Panel: Gasa transparente, hombros → cintura
+— Cola: Cathedral 1 metro
+— Tejido: Popelín + gasa
+
+DETALLES A EXPLORAR
+— Botones nacarados / costuras visibles</div>`
+      },
+      {
+        title: 'PARA QUÉ SIRVE',
+        content: `<ul class="checklist">
+          <li>Referencia durante la producción del vestido</li>
+          <li>Base para generar los prompts de IA</li>
+          <li>Contenido de las fichas del deck de propuesta</li>
+          <li>Documentación del encargo para archivo del atelier</li>
+        </ul>
+        <div class="tag-row" style="margin-top:16px">
+          <span class="tag">Silueta</span>
+          <span class="tag">Escote</span>
+          <span class="tag">Tejido</span>
+          <span class="tag">Cola</span>
+          <span class="tag">Color</span>
+          <span class="tag gold">Concepto</span>
+        </div>`
+      }
+    ]
+  },
+  {
+    icon: '🤖',
+    tag: 'PASO 3',
+    title: 'Prompts de IA',
+    subtitle: 'Generación de prompts para FLUX · Realista + Ilustración',
+    color: '#4E4640',
+    sections: [
+      {
+        title: 'PROMPT REALISTA',
+        content: `<div class="prompt-card">
+          <h4>FLUX.1-Krea-dev · 768×1024</h4>
+          <p>Bridal gown on a [age]-year-old woman, front view, ivory crepe A-line dress with square neckline flaring from the waist with [X]cm train, structured cape with sheer transparent chiffon front panel from shoulders to waist, cape back extends into dramatic [X]-metre cathedral train, two distinct trains visible, sleeveless, summer wedding Spain, soft natural daylight, full-length editorial fashion photography, clean white studio background, couture quality</p>
+        </div>`
+      },
+      {
+        title: 'PROMPT ILUSTRACIÓN',
+        content: `<div class="prompt-card">
+          <h4>FLUX.1-Krea-dev · 768×1024</h4>
+          <p>Fashion illustration of a bridal gown, [view] view, ivory crepe A-line dress with square neckline and [X]cm train, structured cape with sheer transparent chiffon front panel from shoulders to waist, back cape extends into [X]-metre dramatic train, two distinct trains separately visible, elegant haute couture fashion sketch style, soft ink lines with delicate watercolour wash, ivory and white palette, white background, hand-drawn NOT photographic</p>
+        </div>
+        <div class="tip-box" style="margin-top:12px"><p>🔗 Herramienta: <strong>FLUX.1-Krea-dev</strong> en Hugging Face Spaces</p></div>`
+      }
+    ]
+  },
+  {
+    icon: '🔁',
+    tag: 'PASO 4',
+    title: 'Iteración Visual',
+    subtitle: 'Refinar hasta que el concepto sea fiel al diseño',
+    color: '#5C534C',
+    sections: [
+      {
+        title: 'PROBLEMAS COMUNES → FIX',
+        content: `<ul class="checklist">
+          <li><strong>Sirena en vez de corte A</strong> → añadir "A-line flaring from waist, NOT mermaid"</li>
+          <li><strong>Las dos colas se fusionan</strong> → añadir "two completely separate distinct trains"</li>
+          <li><strong>La capa parece mangas</strong> → añadir "structured cape draped over back, NOT sleeves"</li>
+          <li><strong>Gasa opaca</strong> → usar "sheer transparent chiffon" en vez de "transparent"</li>
+          <li><strong>Demasiado fotorrealista</strong> → añadir "hand-drawn illustration, NOT photographic"</li>
+          <li><strong>Solo vista trasera</strong> → especificar "front view" o "three-quarter view"</li>
+        </ul>`
+      },
+      {
+        title: 'VISTAS OBJETIVO',
+        content: `<div class="tag-row">
+          <span class="tag gold">Vista frontal</span>
+          <span class="tag gold">Vista trasera</span>
+          <span class="tag">Vista ¾</span>
+          <span class="tag">Detalle capa</span>
+        </div>
+        <div class="tip-box" style="margin-top:14px"><p>Objetivo mínimo antes de construir el deck: <strong>vista frontal realista + vista trasera realista + boceto ilustración</strong>.</p></div>
+        <div class="tip-box" style="margin-top:8px"><p>Cada imagen que compartes aquí la analizo y te doy el siguiente prompt refinado directamente.</p></div>`
+      }
+    ]
+  },
+  {
+    icon: '📊',
+    tag: 'PASO 5',
+    title: 'Deck de Propuesta',
+    subtitle: 'PPTX + PDF — listo para presentar y enviar a la clienta',
+    color: '#6B615A',
+    sections: [
+      {
+        title: 'ESTRUCTURA DEL DECK',
+        content: `<div class="slide-strip">
+          <div class="slide-thumb">
+            <div class="slide-num">SLIDE 1</div>
+            <div class="slide-name">Portada</div>
+          </div>
+          <div class="slide-thumb">
+            <div class="slide-num">SLIDE 2</div>
+            <div class="slide-name">El Vestido</div>
+          </div>
+          <div class="slide-thumb">
+            <div class="slide-num">SLIDE 3</div>
+            <div class="slide-name">La Capa</div>
+          </div>
+          <div class="slide-thumb">
+            <div class="slide-num">SLIDE 4</div>
+            <div class="slide-name">Boceto + Próximos pasos</div>
+          </div>
+          <div class="slide-thumb">
+            <div class="slide-num">SLIDE 5</div>
+            <div class="slide-name">Cierre</div>
+          </div>
+        </div>
+        <div class="tip-box" style="margin-top:12px"><p>El script <strong>build_deck.py</strong> está empaquetado en el skill. Solo necesitas pasarme las 3 imágenes guardadas en tu carpeta.</p></div>`
+      },
+      {
+        title: 'LO QUE ENTREGA',
+        content: `<ul class="checklist">
+          <li><strong>Propuesta_Vestido_Novia.pptx</strong> — editable, para ajustar nombres y detalles</li>
+          <li><strong>Propuesta_Vestido_Novia.pdf</strong> — para enviar a la clienta después de la sesión</li>
+        </ul>
+        <div class="code-block" style="margin-top:12px"># Para ejecutar en sesión nueva:
+python scripts/build_deck.py \
+  "front.jpg" \
+  "back.jpg" \
+  "sketch.jpg"</div>`
+      }
+    ]
+  },
+  {
+    icon: '👗',
+    tag: 'PASO 6',
+    title: 'Producción',
+    subtitle: 'Tú te centras en hacer el vestido — todo lo demás automatizado',
+    color: '#B8966E',
+    sections: [
+      {
+        title: 'LO QUE YA ESTÁ AUTOMATIZADO',
+        content: `<ul class="checklist">
+          <li>Extracción del brief desde descripción libre</li>
+          <li>Generación de prompts para IA (realista + boceto)</li>
+          <li>Iteración y refinamiento de imágenes</li>
+          <li>Notas de estilo estructuradas</li>
+          <li>Deck PPTX + PDF de propuesta de cliente</li>
+        </ul>`
+      },
+      {
+        title: 'PRÓXIMAS AUTOMATIZACIONES',
+        content: `<ul class="checklist">
+          <li>Respuesta automática a consultas (WhatsApp / web / email)</li>
+          <li>Gestión de agenda y recordatorios de pruebas</li>
+          <li>Generación de presupuestos y facturas</li>
+          <li>Seguimiento del estado del pedido a la clienta</li>
+          <li>Control de stock de tejidos y materiales</li>
+          <li>Resumen contable mensual</li>
+        </ul>
+        <div class="tag-row" style="margin-top:16px">
+          <span class="tag dark">Tú: diseñar y producir</span>
+          <span class="tag gold">Claude: todo lo demás</span>
+        </div>`
+      }
+    ]
+  }
+];
+
+let currentStep = 0;
+
+function showStep(index) {
+  currentStep = index;
+
+  // Update active step
+  document.querySelectorAll('.step').forEach((s, i) => {
+    s.classList.toggle('active', i === index);
+  });
+
+  const step = steps[index];
+  const panel = document.getElementById('detail-panel');
+
+  panel.innerHTML = `
+    <div class="panel-header">
+      <div class="panel-icon" style="background:${step.color}">${step.icon}</div>
+      <div class="panel-title-group">
+        <div class="panel-step-tag">${step.tag}</div>
+        <div class="panel-title">${step.title}</div>
+        <div class="panel-subtitle">${step.subtitle}</div>
+      </div>
+    </div>
+    <div class="panel-body">
+      ${step.sections.map(s => `
+        <div class="panel-section">
+          <h3>${s.title}</h3>
+          ${s.content}
+        </div>
+      `).join('')}
+    </div>
+    <div class="panel-footer">
+      <div class="nav-dots">
+        ${steps.map((_, i) => `<button class="nav-dot ${i === index ? 'active' : ''}" onclick="showStep(${i})"></button>`).join('')}
+      </div>
+      <div style="display:flex;gap:10px">
+        ${index > 0 ? `<button class="btn" onclick="showStep(${index-1})">← ANTERIOR</button>` : ''}
+        ${index < steps.length - 1 ? `<button class="btn gold" onclick="showStep(${index+1})">SIGUIENTE →</button>` : '<button class="btn gold">✓ FLUJO COMPLETO</button>'}
+      </div>
+    </div>
+  `;
+}
+
+// Init
+showStep(0);
+</script>
+</body>
+</html>
