@@ -1029,12 +1029,21 @@ def render_client_detail_page(d):
     .detail-card {{ padding: 14px; }}
     .hero {{ padding: 14px 16px; }}
     .hero-name {{ font-size: 19px; }}
-    .detail-info-row span:last-child {{ word-break: break-word; overflow-wrap: anywhere; }}
-    .spec-label {{ width: 38%; white-space: normal; }}
-    .spec-value {{ word-break: break-word; overflow-wrap: anywhere; }}
+    .detail-info-row {{ flex-wrap: nowrap; }}
+    .detail-info-row span:last-child {{ word-break: break-word; overflow-wrap: anywhere; min-width: 0; }}
+    /* Spec table: stack label above value on mobile */
+    .spec-table tr {{ display: block; padding: 7px 0; border-bottom: 1px solid var(--border); }}
+    .spec-table tr:last-child {{ border-bottom: none; }}
+    .spec-label {{ display: block; width: 100%; white-space: normal; padding: 0 0 2px; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; vertical-align: top; }}
+    .spec-value {{ display: block; width: 100%; padding: 0; word-break: break-word; overflow-wrap: anywhere; font-size: 14px; }}
+    /* Timeline: hide Notes column, allow text wrap */
+    .timeline-table {{ min-width: 0; font-size: 12px; }}
+    .timeline-table th:last-child, .timeline-table td:last-child {{ display: none; }}
+    .tl-date {{ white-space: normal; }}
+    /* Comms */
     .comm-direction {{ margin-left: 0; width: 100%; }}
-    .fin-row {{ flex-wrap: wrap; gap: 2px; }}
     .comms-section, .meas-section {{ padding: 14px; }}
+    .fin-row {{ flex-wrap: wrap; gap: 2px; }}
   }}
 
   /* ── Detail cards ── */
