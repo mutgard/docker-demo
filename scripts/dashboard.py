@@ -5,10 +5,32 @@ Run: python3 scripts/dashboard.py
 Then open: http://localhost:8765
 """
 
-import os, re, json, urllib.parse
+import os, re, json, urllib.parse, hmac, hashlib
 from pathlib import Path
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from datetime import date, datetime
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "")
+# Derive a session token from the password so no extra env var is needed.
+# Changing the password automatically invalidates all existing sessions.
+_SESSION_TOKEN = (
+    hmac.new(b"juliette-session-v1", _PASSWORD.encode(), hashlib.sha256).hexdigest()
+    if _PASSWORD else ""
+)
+
+def _get_cookie(headers, name):
+    for part in headers.get("Cookie", "").split(";"):
+        k, _, v = part.strip().partition("=")
+        if k.strip() == name:
+            return v.strip()
+    return ""
+
+def _is_authenticated(headers):
+    if not _PASSWORD:
+        return True  # No password set → open (local dev)
+    return hmac.compare_digest(_get_cookie(headers, "session"), _SESSION_TOKEN)
 
 ROOT = Path(__file__).parent.parent / "atelier"
 TODAY = str(date.today())
@@ -1628,6 +1650,41 @@ CONTACT_FORM_HTML = """<!DOCTYPE html>
 </body>
 </html>"""
 
+LOGIN_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Juliette by Julia Arnau</title>
+<style>
+  :root { --bg:#FAF8F5; --surface:#FFFFFF; --border:#EDE9E3; --text:#1C1917; --muted:#78716C; --accent:#9D7B5A; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; align-items:center; justify-content:center; padding:40px 20px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:18px; padding:40px 32px; max-width:360px; width:100%; }
+  h1 { font-size:20px; font-weight:700; margin-bottom:4px; }
+  .sub { font-size:13px; color:var(--muted); margin-bottom:28px; }
+  label { display:block; font-size:12px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); margin-bottom:6px; }
+  input[type=password] { width:100%; padding:10px 14px; border:1px solid var(--border); border-radius:8px; font-size:15px; background:var(--bg); color:var(--text); outline:none; }
+  input[type=password]:focus { border-color:var(--accent); }
+  button { width:100%; margin-top:16px; padding:11px; background:var(--accent); color:#fff; border:none; border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; }
+  button:hover { opacity:.9; }
+  .error { margin-top:14px; font-size:13px; color:#b91c1c; text-align:center; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Juliette</h1>
+  <p class="sub">by Julia Arnau — Operations</p>
+  <form method="POST" action="/login">
+    <label for="pw">Password</label>
+    <input type="password" id="pw" name="password" autofocus autocomplete="current-password">
+    <button type="submit">Sign in</button>
+    <!--ERROR-->
+  </form>
+</div>
+</body>
+</html>"""
+
 CONTACT_THANKS_HTML = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1661,6 +1718,20 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/contact":
             self._send(200, "text/html", CONTACT_FORM_HTML)
             return
+        if self.path == "/login":
+            self._send(200, "text/html", LOGIN_HTML)
+            return
+        if self.path == "/logout":
+            self.send_response(302)
+            self.send_header("Location", "/login")
+            self.send_header("Set-Cookie", "session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0")
+            self.end_headers()
+            return
+        if not _is_authenticated(self.headers):
+            self.send_response(302)
+            self.send_header("Location", "/login")
+            self.end_headers()
+            return
         clients = load_clients()
         appointments = load_appointments()
         finances = load_finances()
@@ -1673,6 +1744,26 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length)
+
+        if self.path == "/login":
+            params = urllib.parse.parse_qs(body.decode("utf-8", errors="replace"))
+            pw = params.get("password", [""])[0]
+            if _PASSWORD and hmac.compare_digest(pw, _PASSWORD):
+                self.send_response(302)
+                self.send_header("Location", "/")
+                self.send_header("Set-Cookie",
+                    f"session={_SESSION_TOKEN}; HttpOnly; SameSite=Strict; Path=/")
+                self.end_headers()
+            else:
+                error = '<p class="error">Incorrect password.</p>'
+                self._send(200, "text/html", LOGIN_HTML.replace("<!--ERROR-->", error))
+            return
+
+        if not _is_authenticated(self.headers):
+            self.send_response(302)
+            self.send_header("Location", "/login")
+            self.end_headers()
+            return
 
         if self.path == "/inbox/action":
             try:
