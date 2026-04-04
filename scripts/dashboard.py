@@ -64,6 +64,106 @@ def load_clients():
         })
     return clients
 
+def load_client_detail(slug):
+    """Load full data for one client. Returns None if not found."""
+    slug_dir = ROOT / "clients" / slug
+    profile = slug_dir / "profile.md"
+    if not slug_dir.is_dir() or not profile.exists():
+        return None
+    text = profile.read_text()
+    name_m = re.search(r"^# Client:\s*(.+)", text, re.MULTILINE)
+    name = name_m.group(1).strip() if name_m else slug_dir.name.title()
+
+    # Active order
+    order = None
+    orders_dir = slug_dir / "orders"
+    if orders_dir.exists():
+        for o in sorted(orders_dir.glob("*.md")):
+            if o.name.startswith("_"):
+                continue
+            ot = o.read_text()
+            stage = field(ot, "Current stage")
+            if stage and stage.lower() not in ("delivered", "cancelled"):
+                timeline = []
+                for row in re.finditer(r"^\|([^|]+)\|([^|]+)\|([^|]+)\|([^|]*)\|", ot, re.MULTILINE):
+                    cols = [c.strip() for c in row.groups()]
+                    if cols[0].lower() == "milestone" or re.match(r"^[-: ]+$", cols[0]):
+                        continue
+                    timeline.append({"milestone": cols[0], "target": cols[1], "completed": cols[2], "notes": cols[3]})
+                order = {
+                    "id":               o.stem,
+                    "wedding_date":     field(ot, "Wedding date"),
+                    "order_date":       field(ot, "Order date"),
+                    "silhouette":       field(ot, "Silhouette"),
+                    "neckline":         field(ot, "Neckline"),
+                    "back":             field(ot, "Back"),
+                    "sleeves":          field(ot, "Sleeves"),
+                    "train":            field(ot, "Train"),
+                    "length":           field(ot, "Length"),
+                    "main_fabric":      field(ot, "Main fabric"),
+                    "lining":           field(ot, "Lining"),
+                    "embellishments":   field(ot, "Embellishments"),
+                    "color":            field(ot, "Color"),
+                    "special_requests": field(ot, "Special requests"),
+                    "total_price":      field(ot, "Total price"),
+                    "deposit_paid":     field(ot, "Deposit paid"),
+                    "balance_due":      field(ot, "Balance due"),
+                    "stage":            stage,
+                    "priority":         field(ot, "Priority"),
+                    "order_notes":      field(ot, "Notes"),
+                    "timeline":         timeline,
+                }
+                break
+
+    # Comms — newest first
+    comms = []
+    comms_dir = slug_dir / "comms"
+    if comms_dir.exists():
+        for cf in sorted(comms_dir.glob("*.md"), reverse=True):
+            ct = cf.read_text()
+            summary_m = re.search(r"## Summary\s*\n(.*?)(?=\n## |\Z)", ct, re.DOTALL)
+            summary = summary_m.group(1).strip() if summary_m else ""
+            raw_actions = re.findall(r"- \[(x| )\] (.+)", ct)
+            action_items = [{"done": x == "x", "text": t} for x, t in raw_actions]
+            followup_done_m = re.search(r"\*\*Done:\*\*\s*(.+)", ct)
+            comms.append({
+                "date":         field(ct, "Date"),
+                "time":         field(ct, "Time"),
+                "channel":      field(ct, "Channel"),
+                "direction":    field(ct, "Direction"),
+                "summary":      summary,
+                "action_items": action_items,
+                "followup_by_whom": field(ct, "By whom"),
+                "followup_by_when": field(ct, "By when"),
+                "followup_done":    followup_done_m.group(1).strip() if followup_done_m else "",
+            })
+
+    # Measurements
+    meas_file = slug_dir / "measurements.md"
+    measurements_raw = meas_file.read_text() if meas_file.exists() else None
+
+    return {
+        "slug":             slug,
+        "name":             name,
+        "phone":            field(text, "Phone"),
+        "email":            field(text, "Email"),
+        "whatsapp":         field(text, "WhatsApp"),
+        "instagram":        field(text, "Instagram"),
+        "address":          field(text, "Address"),
+        "source":           field(text, "How did they find us"),
+        "referred_by":      field(text, "Referred by"),
+        "wedding_date":     field(text, "Wedding date"),
+        "venue":            field(text, "Venue"),
+        "budget":           field(text, "Budget"),
+        "notes":            field(text, "Notes"),
+        "client_since":     field(text, "Client since"),
+        "tags":             field(text, "Tags"),
+        "order":            order,
+        "comms":            comms,
+        "measurements_raw": measurements_raw,
+    }
+
+
 def load_appointments():
     appts = []
     appt_dir = ROOT / "appointments"
@@ -639,6 +739,7 @@ def render_client_card(c):
     av_bg = avatar_color(c["name"])
     ini = initials(c["name"])
     return f"""
+    <a href="/client/{c['slug']}" class="client-card-link">
     <div class="client-card">
       <div class="card-top">
         <div class="avatar" style="background:{av_bg}">{ini}</div>
@@ -651,7 +752,526 @@ def render_client_card(c):
       {contact_html}
       {last_html}
       {order_label}
+    </div>
+    </a>"""
+
+COMM_CHANNEL_COLORS = {
+    "whatsapp":  ("#DCFCE7", "#15803D"),
+    "in-person": ("#F5EFE8", "#9D7B5A"),
+    "email":     ("#DBEAFE", "#1D4ED8"),
+    "web-form":  ("#F3E8FF", "#7C3AED"),
+    "call":      ("#F3F4F6", "#6B7280"),
+}
+
+def _comm_channel_badge(channel):
+    bg, fg = COMM_CHANNEL_COLORS.get(channel.lower(), ("#F3F4F6", "#6B7280"))
+    label = channel.replace("-", " ").title()
+    return f'<span class="comm-channel-badge" style="background:{bg};color:{fg}">{label}</span>'
+
+def _spec_row(label, value):
+    if not value:
+        return ""
+    return f'<tr><td class="spec-label">{label}</td><td class="spec-value">{value}</td></tr>'
+
+def render_client_detail_page(d):
+    name = d["name"]
+    av_bg = avatar_color(name)
+    ini = initials(name)
+    wedding = d["wedding_date"] or "Wedding date TBC"
+    order = d["order"]
+
+    # ── Stage badge / lead tag ──────────────────────────────────────────────────
+    if order:
+        hero_badge = stage_badge(order["stage"])
+    else:
+        hero_badge = '<span class="lead-tag">Lead</span>'
+
+    # ── Profile card ────────────────────────────────────────────────────────────
+    def info_row(icon, value):
+        if not value:
+            return ""
+        return f'<div class="detail-info-row"><span class="detail-info-icon">{icon}</span><span>{value}</span></div>'
+
+    profile_html = f"""
+    <div class="detail-card">
+      <div class="detail-card-title">Profile</div>
+      {info_row("✉", d["email"])}
+      {info_row("📱", d["whatsapp"] or d["phone"])}
+      {info_row("📷", d["instagram"])}
+      {info_row("📍", d["address"])}
+      {info_row("💒", d["venue"])}
+      {info_row("💰", d["budget"])}
+      {info_row("🔎", d["source"])}
+      {info_row("👤", ("Referred by " + d["referred_by"]) if d["referred_by"] else "")}
+      {info_row("🗓", ("Client since " + d["client_since"]) if d["client_since"] else "")}
+      {"<div class='detail-notes'>" + d["notes"] + "</div>" if d["notes"] else ""}
     </div>"""
+
+    # ── Order card ──────────────────────────────────────────────────────────────
+    if order:
+        spec_rows = (
+            _spec_row("Silhouette",     order["silhouette"]) +
+            _spec_row("Neckline",       order["neckline"]) +
+            _spec_row("Back",           order["back"]) +
+            _spec_row("Sleeves",        order["sleeves"]) +
+            _spec_row("Train",          order["train"]) +
+            _spec_row("Length",         order["length"]) +
+            _spec_row("Main fabric",    order["main_fabric"]) +
+            _spec_row("Lining",         order["lining"]) +
+            _spec_row("Embellishments", order["embellishments"]) +
+            _spec_row("Colour",         order["color"]) +
+            _spec_row("Special notes",  order["special_requests"])
+        )
+
+        timeline_rows = ""
+        for row in order["timeline"]:
+            done = bool(row["completed"])
+            tr_cls = "tl-done" if done else "tl-pending"
+            check = "✓" if done else "○"
+            check_cls = "tl-check-done" if done else "tl-check-pending"
+            note = f'<span class="tl-note">{row["notes"]}</span>' if row["notes"] else ""
+            timeline_rows += f"""<tr class="{tr_cls}">
+              <td><span class="{check_cls}">{check}</span></td>
+              <td>{row["milestone"]}</td>
+              <td class="tl-date">{row["target"]}</td>
+              <td class="tl-date">{row["completed"] or "—"}</td>
+              <td>{note}</td>
+            </tr>"""
+
+        order_notes_html = f'<div class="detail-order-notes">{order["order_notes"]}</div>' if order["order_notes"] else ""
+
+        order_html = f"""
+    <div class="detail-card">
+      <div class="detail-card-title">Order — {order["id"]}</div>
+      <table class="spec-table">{spec_rows}</table>
+      <div class="detail-section-sub">Timeline</div>
+      <div class="table-wrap">
+        <table class="timeline-table">
+          <thead><tr><th></th><th>Milestone</th><th>Target</th><th>Completed</th><th>Notes</th></tr></thead>
+          <tbody>{timeline_rows}</tbody>
+        </table>
+      </div>
+      <div class="detail-section-sub">Financials</div>
+      <div class="fin-row-group">
+        <div class="fin-row"><span>Total price</span><span class="fin-val">{order["total_price"]}</span></div>
+        <div class="fin-row"><span>Deposit paid</span><span class="fin-val">{order["deposit_paid"]}</span></div>
+        <div class="fin-row fin-row-balance"><span>Balance due</span><span class="fin-val">{order["balance_due"]}</span></div>
+      </div>
+      {order_notes_html}
+    </div>"""
+    else:
+        order_html = '<div class="detail-card"><div class="detail-card-title">Order</div><div class="empty" style="padding:16px 0">No active order.</div></div>'
+
+    # ── Comms log ───────────────────────────────────────────────────────────────
+    comms_html = ""
+    for comm in d["comms"]:
+        badge_html = _comm_channel_badge(comm["channel"])
+        direction_html = f'<span class="comm-direction">{comm["direction"]}</span>' if comm["direction"] else ""
+        time_html = f' · {comm["time"]}' if comm["time"] else ""
+
+        # Action items
+        actions_html = ""
+        if comm["action_items"]:
+            items = ""
+            for ai in comm["action_items"]:
+                cls = "ai-done" if ai["done"] else "ai-open"
+                icon = "✓" if ai["done"] else "○"
+                items += f'<li class="{cls}"><span class="ai-icon">{icon}</span>{ai["text"]}</li>'
+            actions_html = f'<ul class="action-items">{items}</ul>'
+
+        # Follow-up
+        fu_parts = []
+        if comm["followup_by_whom"]:
+            fu_parts.append(f'<span>By whom: <strong>{comm["followup_by_whom"]}</strong></span>')
+        if comm["followup_by_when"]:
+            fu_parts.append(f'<span>By: <strong>{comm["followup_by_when"]}</strong></span>')
+        if comm["followup_done"]:
+            done_str = comm["followup_done"].lower()
+            fu_icon = "✓" if done_str in ("yes", "true", "done") else "○"
+            fu_parts.append(f'<span>Done: <strong>{fu_icon} {comm["followup_done"]}</strong></span>')
+        followup_html = f'<div class="comm-followup">{" · ".join(fu_parts)}</div>' if fu_parts else ""
+
+        summary_html = f'<div class="comm-summary">{comm["summary"]}</div>' if comm["summary"] else ""
+
+        comms_html += f"""
+      <div class="comm-entry">
+        <div class="comm-header">
+          <span class="comm-date">{comm["date"]}{time_html}</span>
+          {badge_html}
+          {direction_html}
+        </div>
+        {summary_html}
+        {actions_html}
+        {followup_html}
+      </div>"""
+
+    if not comms_html:
+        comms_html = '<div class="empty">No communication logged yet.</div>'
+
+    # ── Measurements ────────────────────────────────────────────────────────────
+    if d["measurements_raw"]:
+        meas_html = f'<pre class="measurements-pre">{d["measurements_raw"]}</pre>'
+    else:
+        meas_html = '<div class="empty">No measurements recorded yet.</div>'
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{name} — Juliette by Julia Arnau</title>
+<style>
+  :root {{
+    --bg: #FAF8F5;
+    --surface: #FFFFFF;
+    --border: #EDE9E3;
+    --text: #1C1917;
+    --muted: #78716C;
+    --accent: #9D7B5A;
+    --accent-light: #F5EFE8;
+  }}
+  * {{ box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }}
+  html, body {{ min-height: 100%; }}
+  body {{
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }}
+
+  /* ── Header ── */
+  header {{
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    height: 60px;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }}
+  .back-link {{
+    font-size: 13px;
+    color: var(--muted);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }}
+  .back-link:hover {{ color: var(--text); }}
+  .header-brand {{
+    flex: 1;
+    font-size: 13px;
+    color: var(--muted);
+    text-align: right;
+  }}
+
+  /* ── Hero ── */
+  .hero {{
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 24px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }}
+  .hero-avatar {{
+    width: 56px; height: 56px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+    letter-spacing: 0.03em;
+  }}
+  .hero-info {{ flex: 1; min-width: 0; }}
+  .hero-name {{
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 4px;
+  }}
+  .hero-wedding {{
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }}
+  .stage-badge {{
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 500;
+  }}
+  .lead-tag {{
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--accent-light);
+    color: var(--accent);
+  }}
+
+  /* ── Main layout ── */
+  .main {{ padding: 20px; max-width: 1100px; margin: 0 auto; }}
+  .detail-grid {{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }}
+  @media (max-width: 700px) {{
+    .detail-grid {{ grid-template-columns: 1fr; }}
+  }}
+
+  /* ── Detail cards ── */
+  .detail-card {{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+  }}
+  .detail-card-title {{
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }}
+  .detail-section-sub {{
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--muted);
+    margin: 18px 0 10px;
+  }}
+  .detail-info-row {{
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 8px;
+  }}
+  .detail-info-icon {{ flex-shrink: 0; width: 18px; text-align: center; }}
+  .detail-notes {{
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }}
+
+  /* ── Spec table ── */
+  .spec-table {{ width: 100%; border-collapse: collapse; font-size: 13px; }}
+  .spec-label {{
+    color: var(--muted);
+    padding: 5px 12px 5px 0;
+    white-space: nowrap;
+    vertical-align: top;
+    width: 40%;
+  }}
+  .spec-value {{
+    color: var(--text);
+    padding: 5px 0;
+    line-height: 1.4;
+  }}
+
+  /* ── Timeline table ── */
+  .table-wrap {{ overflow-x: auto; -webkit-overflow-scrolling: touch; }}
+  .timeline-table {{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    min-width: 380px;
+  }}
+  .timeline-table thead th {{
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }}
+  .timeline-table tbody tr {{ border-bottom: 1px solid var(--border); }}
+  .timeline-table tbody tr:last-child {{ border-bottom: none; }}
+  .timeline-table td {{ padding: 7px 8px; vertical-align: middle; }}
+  .tl-done td {{ color: var(--muted); }}
+  .tl-done {{ background: #F0FDF4; }}
+  .tl-check-done {{ color: #16A34A; font-weight: 700; }}
+  .tl-check-pending {{ color: #D1D5DB; }}
+  .tl-date {{ white-space: nowrap; color: var(--muted); }}
+  .tl-note {{ font-size: 11px; color: var(--muted); }}
+
+  /* ── Financials ── */
+  .fin-row-group {{
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }}
+  .fin-row {{
+    display: flex;
+    justify-content: space-between;
+    padding: 9px 14px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+  }}
+  .fin-row:last-child {{ border-bottom: none; }}
+  .fin-row-balance {{ font-weight: 600; }}
+  .fin-val {{ font-weight: 600; color: var(--text); }}
+  .detail-order-notes {{
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }}
+
+  /* ── Comms log ── */
+  .comms-section, .meas-section {{
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }}
+  .section-title {{
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }}
+  .comm-entry {{
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+  }}
+  .comm-entry:last-child {{ border-bottom: none; padding-bottom: 0; }}
+  .comm-entry:first-child {{ padding-top: 0; }}
+  .comm-header {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }}
+  .comm-date {{
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+  }}
+  .comm-channel-badge {{
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 99px;
+    font-size: 11px;
+    font-weight: 500;
+  }}
+  .comm-direction {{
+    font-size: 11px;
+    color: var(--muted);
+    margin-left: auto;
+  }}
+  .comm-summary {{
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    margin-bottom: 10px;
+  }}
+  .action-items {{
+    list-style: none;
+    margin-bottom: 10px;
+  }}
+  .action-items li {{
+    font-size: 12px;
+    padding: 3px 0;
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+  }}
+  .ai-done {{ color: var(--muted); text-decoration: line-through; }}
+  .ai-open {{ color: var(--text); }}
+  .ai-icon {{ flex-shrink: 0; font-size: 11px; margin-top: 1px; }}
+  .ai-done .ai-icon {{ color: #16A34A; }}
+  .comm-followup {{
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 8px 10px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }}
+
+  /* ── Measurements ── */
+  .measurements-pre {{
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 12px;
+    color: var(--text);
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-x: auto;
+  }}
+
+  /* ── Empty ── */
+  .empty {{
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+    padding: 24px 0;
+  }}
+</style>
+</head>
+<body>
+
+<header>
+  <a class="back-link" href="/">&#8592; Clients</a>
+  <span class="header-brand">Juliette by Julia Arnau</span>
+</header>
+
+<div class="hero">
+  <div class="hero-avatar" style="background:{av_bg}">{ini}</div>
+  <div class="hero-info">
+    <div class="hero-name">{name}</div>
+    <div class="hero-wedding">&#9674; {wedding}</div>
+    {hero_badge}
+  </div>
+</div>
+
+<div class="main">
+  <div class="detail-grid">
+    {profile_html}
+    {order_html}
+  </div>
+
+  <div class="comms-section">
+    <div class="section-title">Communication log</div>
+    {comms_html}
+  </div>
+
+  <div class="meas-section">
+    <div class="section-title">Measurements</div>
+    {meas_html}
+  </div>
+</div>
+
+</body>
+</html>"""
+
 
 def render_inbox_cards(inbox):
     if not inbox:
@@ -1043,6 +1663,8 @@ def render_html(clients, appointments, finances, expenses, inbox, scenarios=None
     padding: 16px;
     transition: box-shadow 0.15s;
   }}
+  .client-card-link {{ text-decoration: none; color: inherit; display: block; }}
+  .client-card-link:hover .client-card {{ box-shadow: 0 2px 12px rgba(0,0,0,0.07); cursor: pointer; }}
   .client-card:hover {{ box-shadow: 0 2px 12px rgba(0,0,0,0.07); }}
   .card-top {{
     display: flex;
@@ -1660,6 +2282,14 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/contact":
             self._send(200, "text/html", CONTACT_FORM_HTML)
+            return
+        if self.path.startswith("/client/"):
+            slug = self.path[len("/client/"):].strip("/")
+            detail = load_client_detail(slug)
+            if detail is None:
+                self._send(404, "text/html", "<h1>Client not found</h1>")
+                return
+            self._send(200, "text/html", render_client_detail_page(detail))
             return
         clients = load_clients()
         appointments = load_appointments()
