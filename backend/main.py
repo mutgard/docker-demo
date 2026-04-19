@@ -15,7 +15,14 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup():
+    from sqlmodel import Session, select
+    from models import Client
+    from seed import run_seed
+    from database import engine
     create_db()
+    with Session(engine) as s:
+        if not s.exec(select(Client)).first():
+            run_seed(s)
 
 app.include_router(clients_router)
 app.include_router(fabrics_router)

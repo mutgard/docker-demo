@@ -105,17 +105,20 @@ SEED = [
     },
 ]
 
+def run_seed(s: Session):
+    for entry in SEED:
+        c = entry["client"]
+        s.add(c); s.commit(); s.refresh(c)
+        for f in entry["fabrics"]:
+            f.client_id = c.id; s.add(f)
+        for a in entry["appointments"]:
+            a.client_id = c.id; s.add(a)
+        for p in entry["payments"]:
+            p.client_id = c.id; s.add(p)
+        s.commit()
+
 if __name__ == "__main__":
     create_db()
     with Session(engine) as s:
-        for entry in SEED:
-            c = entry["client"]
-            s.add(c); s.commit(); s.refresh(c)
-            for f in entry["fabrics"]:
-                f.client_id = c.id; s.add(f)
-            for a in entry["appointments"]:
-                a.client_id = c.id; s.add(a)
-            for p in entry["payments"]:
-                p.client_id = c.id; s.add(p)
-            s.commit()
+        run_seed(s)
     print("Seeded OK")
