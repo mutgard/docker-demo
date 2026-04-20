@@ -52,6 +52,7 @@ function WhatsAppView({ intake }: { intake: WhatsAppIntake }) {
         <Mono size={10} color={T.ink3}>WhatsApp</Mono>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        {/* key uses index — safe for static demo data; add id to WhatsAppMessage if thread becomes dynamic */}
         {intake.thread.map((msg, i) => {
           const isJulia = msg.role === 'julia';
           return (
@@ -102,7 +103,9 @@ export function IntakeTab({ clientId }: { clientId: number }) {
   const mobile = useIsMobile();
 
   useEffect(() => {
-    api.getIntake(clientId).then(setData);
+    api.getIntake(clientId)
+      .then(setData)
+      .catch(() => setData(null));
   }, [clientId]);
 
   if (data === 'loading') {
