@@ -1,10 +1,10 @@
 import type { ClientStatus } from '../types';
 
 const STATUS = {
-  'prospect':   { label: 'Prospect',           glyph: '◌', border: '1px dashed #1A1612', bg: 'transparent', fg: '#1A1612' },
-  'sense-paga': { label: 'Sense paga i senyal', glyph: '◑', border: '1px solid #8B6247',  bg: '#F5EDE6',     fg: '#5C3B25' },
-  'clienta':    { label: 'Clienta',             glyph: '●', border: '1px solid #1A1612',  bg: '#1A1612',     fg: '#FDFAF5' },
-  'entregada':  { label: 'Entregada',           glyph: '✓', border: '1px solid #C2B9B0',  bg: '#EDE8DF',     fg: '#6B6158' },
+  'prospect':   { label: 'Prospect',           glyph: '◌', border: '1px dashed var(--ink-4)', bg: 'transparent',               fg: 'var(--ink-3)' },
+  'sense-paga': { label: 'Sense paga i senyal', glyph: '◑', border: '1px solid var(--accent-l)', bg: 'rgba(184,134,90,.10)',    fg: 'var(--accent)' },
+  'clienta':    { label: 'Clienta',             glyph: '●', border: '1px solid var(--ink-2)',  bg: 'var(--ink-1)',              fg: 'var(--bg-app)' },
+  'entregada':  { label: 'Entregada',           glyph: '✓', border: '1px solid var(--line)',   bg: 'transparent',              fg: 'var(--ink-3)' },
 };
 
 export function Badge({ status }: { status: ClientStatus }) {
