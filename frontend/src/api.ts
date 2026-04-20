@@ -16,7 +16,7 @@ async function patch<T>(path: string, body: unknown): Promise<T> {
   return r.json();
 }
 
-import type { Client, Fabric, ShoppingItem } from './types';
+import type { Client, Fabric, ShoppingItem, IntakeData } from './types';
 
 export const api = {
   listClients: () => get<Client[]>('/clients'),
@@ -24,4 +24,10 @@ export const api = {
   patchClient: (id: number, body: Partial<Client>) => patch<Client>(`/clients/${id}`, body),
   patchFabric: (id: number, body: { to_buy?: boolean }) => patch<Fabric>(`/fabrics/${id}`, body),
   getShopping: () => get<ShoppingItem[]>('/shopping'),
+  getIntake: async (id: number): Promise<IntakeData | null> => {
+    const r = await fetch(`${BASE}/clients/${id}/intake`);
+    if (r.status === 404) return null;
+    if (!r.ok) throw new Error(`GET /clients/${id}/intake → ${r.status}`);
+    return r.json();
+  },
 };

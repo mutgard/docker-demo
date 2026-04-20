@@ -43,3 +43,42 @@ export interface ShoppingItem extends Fabric {
   client_id: number;
   client_name: string;
 }
+
+export interface IntakeBrief {
+  wedding_date: string;
+  venue: string;
+  garment: string;
+  style: string;
+  budget_tier: string;
+  fabric_notes: string;
+  extra_notes: string;
+}
+
+export interface IntakeDocument {
+  label: string;
+  type: string;
+  url: string | null;
+}
+
+export interface WhatsAppMessage {
+  role: 'client' | 'julia';
+  text: string;
+  time: string;
+}
+
+export interface WhatsAppIntake {
+  source: 'whatsapp';
+  thread: WhatsAppMessage[];
+  brief: IntakeBrief;
+  documents: IntakeDocument[];
+}
+
+export interface WebFormIntake {
+  source: 'web_form';
+  submitted_at: string;
+  form_data: Record<string, string>;
+  brief: IntakeBrief;
+  documents: IntakeDocument[];
+}
+
+export type IntakeData = WhatsAppIntake | WebFormIntake;
