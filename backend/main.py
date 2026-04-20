@@ -4,6 +4,7 @@ from database import create_db
 from routes.clients import router as clients_router
 from routes.fabrics import router as fabrics_router
 from routes.shopping import router as shopping_router
+from routes.intake import router as intake_router
 
 app = FastAPI(title="Juliette Atelier API")
 
@@ -27,6 +28,7 @@ def on_startup():
 app.include_router(clients_router)
 app.include_router(fabrics_router)
 app.include_router(shopping_router)
+app.include_router(intake_router)
 
 from fastapi.staticfiles import StaticFiles
 import os
