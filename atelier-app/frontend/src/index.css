@@ -17,14 +17,16 @@
   --font-m: 'Courier Prime', 'Courier New', monospace;
 }
 
-html, body {
+html { height: 100%; }
+body {
   height: 100%;
+  overflow: hidden;
   background: var(--bg-app);
   font-family: var(--font-u);
   -webkit-font-smoothing: antialiased;
   color: var(--ink-1);
 }
-#root { height: 100%; min-height: 100vh; }
+#root { height: 100%; }
 
 /* Grain overlay */
 body::after {
@@ -39,13 +41,13 @@ body::after {
 
 /* App shell */
 .app-shell {
-  width: 100%; height: 100%; min-height: 100vh;
+  width: 100%; height: 100%;
   display: flex; flex-direction: column;
   background: var(--bg-app); overflow: hidden;
   padding-top: env(safe-area-inset-top, 0px);
 }
-.app-body { flex: 1; display: flex; overflow: hidden; }
-.app-screen-wrap { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+.app-body        { flex: 1; min-height: 0; display: flex; overflow: hidden; }
+.app-screen-wrap { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
 
 /* Mobile: bottom tab bar only */
 .tab-bar--sidebar { display: none !important; }
