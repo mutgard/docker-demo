@@ -4,7 +4,7 @@ import type { ClientStatus } from '../types';
 
 // ─── Typography ──────────────────────────────────────────────
 
-export function Label({ children, style = {}, size = 10 }: {
+export function Label({ children, style = {}, size = 11 }: {
   children: React.ReactNode; style?: React.CSSProperties; size?: number;
 }) {
   return (
@@ -15,7 +15,7 @@ export function Label({ children, style = {}, size = 10 }: {
   );
 }
 
-export function Mono({ children, size = 12, color = T.ink2, style = {} }: {
+export function Mono({ children, size = 13, color = T.ink2, style = {} }: {
   children: React.ReactNode; size?: number; color?: string; style?: React.CSSProperties;
 }) {
   return (
@@ -23,7 +23,7 @@ export function Mono({ children, size = 12, color = T.ink2, style = {} }: {
   );
 }
 
-export function Serif({ children, size = 28, italic = false, style = {} }: {
+export function Serif({ children, size = 30, italic = false, style = {} }: {
   children: React.ReactNode; size?: number; italic?: boolean; style?: React.CSSProperties;
 }) {
   return (
@@ -66,11 +66,11 @@ export function Badge({ status, size = 'md' }: { status: ClientStatus; size?: 's
       padding: sm ? '2px 8px' : '3px 10px',
       border: `1px ${s.dash ? 'dashed' : 'solid'} ${s.bd}`,
       background: s.bg, color: s.fg,
-      fontFamily: T.mono, fontSize: sm ? 9 : 10,
+      fontFamily: T.mono, fontSize: sm ? 10 : 11,
       letterSpacing: 0.8, textTransform: 'uppercase',
       borderRadius: 999, whiteSpace: 'nowrap', flexShrink: 0,
     }}>
-      <span style={{ fontSize: sm ? 7 : 8 }}>{s.dot}</span>
+      <span style={{ fontSize: sm ? 8 : 9 }}>{s.dot}</span>
       <span>{BADGE_LABELS[status]}</span>
     </span>
   );
@@ -120,7 +120,7 @@ export function Segment({ options, value, onChange }: {
             padding: '7px 14px',
             background: on ? T.ink : 'transparent',
             color: on ? T.paper : T.ink,
-            fontFamily: T.mono, fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase',
+            fontFamily: T.mono, fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase',
             cursor: 'pointer',
           }}>{l}</div>
         );
@@ -135,7 +135,7 @@ export function PrimaryButton({ children, onClick }: { children: React.ReactNode
   return (
     <div onClick={onClick} style={{
       padding: '8px 18px', background: T.ink, color: T.paper,
-      fontFamily: T.mono, fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase',
+      fontFamily: T.mono, fontSize: 12, letterSpacing: 0.8, textTransform: 'uppercase',
       cursor: 'pointer', borderRadius: 2, flexShrink: 0,
     }}>{children}</div>
   );
@@ -145,7 +145,7 @@ export function SecondaryButton({ children, onClick }: { children: React.ReactNo
   return (
     <div onClick={onClick} style={{
       padding: '8px 18px', border: `1px solid ${T.ink}`, color: T.ink,
-      fontFamily: T.mono, fontSize: 11, letterSpacing: 0.8, textTransform: 'uppercase',
+      fontFamily: T.mono, fontSize: 12, letterSpacing: 0.8, textTransform: 'uppercase',
       cursor: 'pointer', borderRadius: 2, background: 'transparent', flexShrink: 0,
     }}>{children}</div>
   );

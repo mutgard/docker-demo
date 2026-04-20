@@ -27,7 +27,7 @@ export function PageHeader({ eyebrow, title, subtitle, right }: Props) {
       <div>
         <Label>{eyebrow}</Label>
         <div style={{ marginTop: 6, display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap' }}>
-          <Serif size={mobile ? 40 : 52} italic>{title}</Serif>
+          <Serif size={mobile ? 44 : 56} italic>{title}</Serif>
           {subtitle && <Mono size={11} color={T.ink3}>{subtitle}</Mono>}
         </div>
       </div>

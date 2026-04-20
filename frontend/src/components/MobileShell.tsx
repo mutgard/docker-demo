@@ -34,8 +34,8 @@ export function MobileHeader({ active, onNav, fabricsToBuy }: {
           const on = t.id === active || (active === 'profile' && t.id === 'clients');
           return (
             <div key={t.id} onClick={() => onNav(t.id)} style={{ flex: 1, textAlign: 'center', padding: '8px 4px 10px', cursor: 'pointer', position: 'relative' }}>
-              <div style={{ fontFamily: T.mono, fontSize: 8, letterSpacing: 0.8, color: on ? T.gold : 'rgba(246,241,232,0.4)', marginBottom: 3 }}>{t.n}</div>
-              <div style={{ fontFamily: T.serif, fontSize: 15, color: on ? T.paper : 'rgba(246,241,232,0.65)', fontStyle: on ? 'italic' : 'normal', position: 'relative', display: 'inline-block' }}>
+              <div style={{ fontFamily: T.mono, fontSize: 9, letterSpacing: 0.8, color: on ? T.gold : 'rgba(246,241,232,0.4)', marginBottom: 3 }}>{t.n}</div>
+              <div style={{ fontFamily: T.serif, fontSize: 16, color: on ? T.paper : 'rgba(246,241,232,0.65)', fontStyle: on ? 'italic' : 'normal', position: 'relative', display: 'inline-block' }}>
                 {t.label}
                 {t.count !== undefined && t.count > 0 && (
                   <span style={{ position: 'absolute', top: -4, right: -14, background: T.gold, color: T.ink, fontFamily: T.mono, fontSize: 8, padding: '1px 5px', borderRadius: 999, lineHeight: 1.3 }}>{t.count}</span>
