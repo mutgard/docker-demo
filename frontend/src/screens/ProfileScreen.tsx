@@ -5,6 +5,7 @@ import { T, fabricVariant } from '../tokens';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { Label, Mono, Serif, Badge, Swatch, Checkbox } from '../components/primitives';
 import { initials, parsePayments, getNextFitting } from '../lib/clientHelpers';
+import { IntakeTab } from '../components/IntakeTab';
 
 interface Props {
   client: Client;
@@ -24,6 +25,7 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
   const pct = priceTotal && priceTotal > 0 ? Math.min(100, Math.round((paid / priceTotal) * 100)) : 0;
   const nextFitting = getNextFitting(c.appointments);
   const px = mobile ? 20 : 40;
+  const [tab, setTab] = useState<'fitxa' | 'ingres'>('fitxa');
 
   const handleToggle = async (fabricId: number, current: boolean) => {
     await api.patchFabric(fabricId, { to_buy: !current });
@@ -60,8 +62,36 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
         </div>
       </div>
 
+      {/* Tab strip */}
+      <div style={{ display: 'flex', borderBottom: `1px solid ${T.hairline}`, flexShrink: 0, background: T.paper }}>
+        {(['fitxa', 'ingres'] as const).map((t) => {
+          const labels = { fitxa: 'Fitxa', ingres: 'Ingrés' };
+          const on = tab === t;
+          return (
+            <div
+              key={t}
+              onClick={() => setTab(t)}
+              style={{
+                padding: '10px 20px',
+                cursor: 'pointer',
+                position: 'relative',
+                fontFamily: T.serif,
+                fontSize: 15,
+                fontStyle: on ? 'italic' : 'normal',
+                color: on ? T.ink : T.ink3,
+              }}
+            >
+              {labels[t]}
+              {on && (
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: T.accent }} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
       {/* Scrollable content */}
-      <div style={{ flex: 1, overflow: 'auto', padding: `${mobile ? 20 : 28}px ${px}px 40px` }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: `${mobile ? 20 : 28}px ${px}px 40px`, display: tab === 'fitxa' ? 'block' : 'none' }}>
 
         {/* Countdown card */}
         {c.status !== 'entregada' && (
@@ -156,6 +186,11 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
           </div>
         )}
       </div>
+      {tab === 'ingres' && (
+        <div style={{ flex: 1, minHeight: 0, overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <IntakeTab clientId={c.id} />
+        </div>
+      )}
     </div>
   );
 }
