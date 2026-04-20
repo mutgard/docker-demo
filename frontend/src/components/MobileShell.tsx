@@ -50,6 +50,3 @@ export function MobileHeader({ active, onNav, fabricsToBuy }: {
   );
 }
 
-// Keep old names as aliases so nothing else breaks during transition
-export function MobileTopBar() { return null; }
-export function MobileTabBar(_p: { active: Screen; onNav: (s: Screen) => void; fabricsToBuy: number }) { return null; }

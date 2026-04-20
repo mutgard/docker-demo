@@ -46,17 +46,17 @@ export default function App() {
 
   if (mobile) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: T.paper, color: T.ink, fontFamily: T.sans }}>
+      <div style={{ display: 'flex', flexDirection: 'column', width: '100%', height: '100dvh', background: T.paper, color: T.ink, fontFamily: T.sans }}>
         <MobileHeader active={screen} onNav={nav} fabricsToBuy={fabricsToBuy} />
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', paddingBottom: 'env(safe-area-inset-bottom)' }}>{content}</div>
+        <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', paddingBottom: 'env(safe-area-inset-bottom)' }}>{content}</div>
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '232px 1fr', height: '100%', background: T.paper, color: T.ink, fontFamily: T.sans }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '232px 1fr', width: '100%', height: '100%', background: T.paper, color: T.ink, fontFamily: T.sans }}>
       <Sidebar active={screen} onNav={nav} fabricsToBuy={fabricsToBuy} totalClients={clients.length} totalFabrics={totalFabrics} />
-      <div style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>{content}</div>
+      <div style={{ minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>{content}</div>
     </div>
   );
 }
