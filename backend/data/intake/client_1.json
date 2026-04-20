@@ -1,0 +1,25 @@
+{
+  "source": "whatsapp",
+  "thread": [
+    {"role": "client", "text": "Hola! M'han recomanat el teu atelier. Estic buscant vestit de núvia per al 17 de maig.", "time": "12 Gen 11:23"},
+    {"role": "julia", "text": "Hola Aina! Quina il·lusió. Tens alguna idea de l'estil que busques?", "time": "12 Gen 11:31"},
+    {"role": "client", "text": "Sí, ho tinc bastant clar! Vull escot en V molt pronunciat, estil princesa però modern. I que pugui ballar tota la nit!", "time": "12 Gen 11:45"},
+    {"role": "julia", "text": "M'encanta que ho tinguis clar! El mikado és perfecte per l'estructura princesa i aguanta molt bé el moviment. Quants convidats teniu?", "time": "12 Gen 12:02"},
+    {"role": "client", "text": "Uns 120. Cerimònia a l'aire lliure i sopar en masia.", "time": "12 Gen 12:08"},
+    {"role": "julia", "text": "Perfecte per un vestit amb volum a la falda. Et proposo mikado seda per al cos i tul de vol per la faldilla. Vols mànigues?", "time": "12 Gen 12:15"},
+    {"role": "client", "text": "No, sense mànigues. I m'agradaria un detall de puntilla a l'escot.", "time": "12 Gen 12:22"},
+    {"role": "julia", "text": "Puntilla Chantilly a l'escot quedarà sublim. Quin pressupost tens en ment?", "time": "12 Gen 12:30"},
+    {"role": "client", "text": "Entre 2.000 i 2.500€.", "time": "12 Gen 12:33"},
+    {"role": "julia", "text": "Podem treballar perfectament dins d'aquest pressupost. Et proposo quedar per prendre mides i ensenyar-te mostres de tela. Quan et va bé?", "time": "12 Gen 12:40"}
+  ],
+  "brief": {
+    "wedding_date": "17 Mai 2026",
+    "venue": "Masia, cerimònia a l'aire lliure",
+    "garment": "Vestit a mida · Princesa modern",
+    "style": "Escot en V profund, sense mànigues, puntilla Chantilly a l'escot, faldilla amb volum",
+    "budget_tier": "Standard",
+    "fabric_notes": "Mikado seda marfil (cos), tul francès (vel), puntilla Chantilly (vora)",
+    "extra_notes": "Ha de poder ballar. 120 convidats."
+  },
+  "documents": []
+}

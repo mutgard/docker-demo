@@ -1,0 +1,24 @@
+{
+  "source": "web_form",
+  "submitted_at": "2026-01-18",
+  "form_data": {
+    "name": "Berta Soler",
+    "email": "berta.soler@gmail.com",
+    "phone": "+34 612 88 31 04",
+    "wedding_date": "31 de maig de 2026",
+    "venue": "Monestir de Pedralbes, Barcelona",
+    "style_notes": "Busco un vestit romàntic i clàssic, amb vel llarg. M'inspira molt l'estètica de les núvies dels anys 50. Voldria algun detall de botons a l'esquena.",
+    "budget_range": "2.000 – 3.000 €",
+    "how_did_you_hear": "Instagram (@juliette.atelier)"
+  },
+  "brief": {
+    "wedding_date": "31 Mai 2026",
+    "venue": "Monestir de Pedralbes, Barcelona",
+    "garment": "Vestit + vel · Romàntic clàssic",
+    "style": "Estètica anys 50, botons a l'esquena, vel llarg",
+    "budget_tier": "Standard",
+    "fabric_notes": "Per definir — primera visita pendent",
+    "extra_notes": "Contacte via Instagram. Primera consulta feta el 10 d'abril."
+  },
+  "documents": []
+}

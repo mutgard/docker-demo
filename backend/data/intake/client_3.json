@@ -1,0 +1,27 @@
+{
+  "source": "whatsapp",
+  "thread": [
+    {"role": "client", "text": "Bona tarda! Soc la Clara, em recomana la Montse Valls. Necessito un vestit de princesa molt estructurat per al 14 de juny.", "time": "15 Nov 11:05"},
+    {"role": "julia", "text": "Hola Clara! La Montse és una clienta molt especial. Estructura real és la meva especialitat. Tens referències?", "time": "15 Nov 11:18"},
+    {"role": "client", "text": "Sí, mira [foto1.jpg] [foto2.jpg] [foto3.jpg] M'agrada molt la silueta de Kate Middleton i Grace Kelly.", "time": "15 Nov 11:25"},
+    {"role": "julia", "text": "Meravelloses referències. Cor estructurat, faldilla amb múltiples capes d'organza. Serà una feina preciosa. Lloc de cerimònia?", "time": "15 Nov 11:42"},
+    {"role": "client", "text": "Catedral de Girona. Vull que sigui imponent.", "time": "15 Nov 11:45"},
+    {"role": "julia", "text": "Catedral mereix un vestit catedral! Mikado per al cos amb organza de seda per als volants. Quants metres de cua vols?", "time": "15 Nov 12:00"},
+    {"role": "client", "text": "Com més llarga millor. I vull puntilla a l'escot. Pressupost no és problema, vull el millor.", "time": "15 Nov 12:08"},
+    {"role": "julia", "text": "Entès. Treballarem amb els millors materials de Gratacós. Et proposo prendre mides la primera setmana de desembre.", "time": "15 Nov 12:15"},
+    {"role": "client", "text": "Perfecte. Puc venir el dimecres 4 de desembre a les 11h?", "time": "15 Nov 12:20"},
+    {"role": "julia", "text": "Apuntat! T'envio confirmació per email. Fins aviat, Clara.", "time": "15 Nov 12:22"},
+    {"role": "client", "text": "Gràcies! Tinc moltes ganes.", "time": "15 Nov 12:23"},
+    {"role": "julia", "text": "Nosaltres també! Serà un vestit extraordinari.", "time": "15 Nov 12:25"}
+  ],
+  "brief": {
+    "wedding_date": "14 Jun 2026",
+    "venue": "Catedral de Girona",
+    "garment": "Vestit princesa · Royal / estructura",
+    "style": "Silueta Kate Middleton / Grace Kelly, cos estructurat, escot amb puntilla, cua llarga, volants d'organza",
+    "budget_tier": "Couture",
+    "fabric_notes": "Mikado seda marfil (cos), organza de seda (volants), tul de cotó (enagua), puntilla Chantilly (escot), entretela fusible (estructura)",
+    "extra_notes": "Referència Montse Valls. Qualitat sense límit de pressupost."
+  },
+  "documents": []
+}

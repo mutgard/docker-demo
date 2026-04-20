@@ -1,0 +1,24 @@
+{
+  "source": "web_form",
+  "submitted_at": "2024-09-05",
+  "form_data": {
+    "name": "Fina Batlle",
+    "email": "fina.batlle@yahoo.es",
+    "phone": "+34 634 77 23 91",
+    "wedding_date": "12 de setembre de 2025",
+    "venue": "Hotel Arts, Barcelona",
+    "style_notes": "Busco un vestit sirena molt glamurós, amb escot molt obert a l'esquena. M'agraden els botons de perla. Referència: Zuhair Murad però assequible.",
+    "budget_range": "2.500 – 3.500 €",
+    "how_did_you_hear": "Recomanació d'una amiga (Núria Pla)"
+  },
+  "brief": {
+    "wedding_date": "12 Set 2025",
+    "venue": "Hotel Arts, Barcelona",
+    "garment": "Vestit sirena · Glamour / escot obert",
+    "style": "Silueta sirena, escot profund a l'esquena, botons de perla, glamurós",
+    "budget_tier": "Premium",
+    "fabric_notes": "Crepe de seda (cos), tul elàstic (folre)",
+    "extra_notes": "Vestit entregat i clienta molt satisfeta. Referència Zuhair Murad. Via recomanació Núria Pla."
+  },
+  "documents": []
+}

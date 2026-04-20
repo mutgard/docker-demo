@@ -1,0 +1,23 @@
+{
+  "source": "whatsapp",
+  "thread": [
+    {"role": "client", "text": "Hola Juliette! Soc l'Elena, ens vam conèixer al mercat de Santa Caterina l'estiu passat.", "time": "20 Gen 16:33"},
+    {"role": "julia", "text": "Elena! Quina alegria! Recordo perfectament. Et cases??", "time": "20 Gen 16:45"},
+    {"role": "client", "text": "Sí!! El 5 de juliol. Vull alguna cosa teva, saps que m'encanta com treballes.", "time": "20 Gen 16:47"},
+    {"role": "julia", "text": "Quina emoció fer el teu vestit! Explica'm... Boda gran o petita?", "time": "20 Gen 16:52"},
+    {"role": "client", "text": "Petita, 40 persones, finca a l'Empordà. Vull alguna cosa fresca, natural, res de formal. Ja saps el meu estil.", "time": "20 Gen 16:58"},
+    {"role": "julia", "text": "Perfectament! Gasa de cotó, potser amb un detall de puntilla italiana a les mànigues llargues. Fluix i elegant. Pressupost?", "time": "20 Gen 17:05"},
+    {"role": "client", "text": "Fins a 1.500€, soc mestra. Però sé que amb tu quedarà preciós.", "time": "20 Gen 17:08"},
+    {"role": "julia", "text": "Treballem perfectament! Confia en mi, et faré el vestit de somni. Quedem la setmana vinent?", "time": "20 Gen 17:12"}
+  ],
+  "brief": {
+    "wedding_date": "05 Jul 2026",
+    "venue": "Finca a l'Empordà",
+    "garment": "Vestit bohemi · Fluix / natural",
+    "style": "Fluid, fresc, natural. Puntilla italiana a les mànigues llargues. Res de formal.",
+    "budget_tier": "Standard",
+    "fabric_notes": "Gasa de cotó (cos), puntilla italiana (màniga), setí de seda (cinturó)",
+    "extra_notes": "Clienta coneguda personalment. Confiança total. Boda íntima 40 persones."
+  },
+  "documents": []
+}

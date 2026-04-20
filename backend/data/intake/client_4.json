@@ -1,0 +1,23 @@
+{
+  "source": "whatsapp",
+  "thread": [
+    {"role": "client", "text": "Hola! He vist el vostre Instagram i m'ha encantat. Estic buscant vestit per al 28 de juny però no tinc massa clar l'estil...", "time": "08 Feb 10:12"},
+    {"role": "julia", "text": "Hola Dolors! Perfecte, per aquí comencem. Tens alguna foto o referència que t'agradi, encara que sigui molt diferent?", "time": "08 Feb 10:25"},
+    {"role": "client", "text": "T'envio algunes de Pinterest [foto1.jpg] [foto2.jpg] [foto3.jpg] [foto4.jpg] Sé que algunes son molt diferents entre elles jaja", "time": "08 Feb 10:31"},
+    {"role": "julia", "text": "No passa res! Veig que t'agraden les línies fluixes i els detalls romàntics. Una cosa important: cotilla o sense?", "time": "08 Feb 10:45"},
+    {"role": "client", "text": "SENSE cotilla per favor. He portat tota la vida i ja estic farta!", "time": "08 Feb 10:47"},
+    {"role": "julia", "text": "Entès perfectament! Podem fer un cos fluid molt elegant sense estructura. On serà la boda?", "time": "08 Feb 10:55"},
+    {"role": "client", "text": "A una masia del Maresme, jardí exterior. Casual-elegant, res de molt pompós.", "time": "08 Feb 11:02"},
+    {"role": "julia", "text": "M'encanta. Et proposo una primera visita sense compromís per veure mostres i parlar d'estil. Tens alguna data disponible a finals d'abril?", "time": "08 Feb 11:10"}
+  ],
+  "brief": {
+    "wedding_date": "28 Jun 2026",
+    "venue": "Masia del Maresme, jardí exterior",
+    "garment": "Consulta inicial · Estil per definir",
+    "style": "Línies fluixes, romàntic, sense cotilla ni estructura. Ambient casual-elegant.",
+    "budget_tier": "Standard",
+    "fabric_notes": "Per definir — primera visita el 22 d'abril",
+    "extra_notes": "Porta Pinterest. Molt oberta a suggeriments. Sense cotilla: innegociable."
+  },
+  "documents": []
+}
