@@ -1,0 +1,39 @@
+import type { Fabric, Appointment, Payment } from '../types';
+
+export function initials(name: string): string {
+  return name.split(' ').slice(0, 2).map(w => w[0]).join('');
+}
+
+export function parseQty(qty: string): number {
+  return parseFloat(qty) || 0;
+}
+
+export function parsePrice(price: string): number {
+  return parseFloat(price.replace(/[€$]/g, '').replace('/m', '').trim()) || 0;
+}
+
+export function parsePayments(payments: Payment[]): { priceTotal: number | null; paid: number } {
+  if (!payments.length) return { priceTotal: null, paid: 0 };
+  let paid = 0;
+  let total = 0;
+  for (const p of payments) {
+    const m = p.value.match(/€([\d.,]+)/);
+    if (!m) continue;
+    const amount = parseFloat(m[1].replace('.', '').replace(',', '.'));
+    if (isNaN(amount)) continue;
+    total += amount;
+    if (p.value.toLowerCase().includes('rebut')) paid += amount;
+  }
+  return { priceTotal: total > 0 ? total : null, paid };
+}
+
+export function getNextFitting(appointments: Appointment[]): string {
+  const upcoming = appointments.find(a => !a.value.toLowerCase().includes('feta') && !a.value.toLowerCase().includes('entregat'));
+  if (upcoming) return `${upcoming.label} · ${upcoming.value}`;
+  const last = appointments[appointments.length - 1];
+  return last?.value.toLowerCase().includes('entregat') ? 'Entregat' : (last?.value ?? '—');
+}
+
+export function fabricsToBuyCount(fabrics: Fabric[]): number {
+  return fabrics.filter(f => f.to_buy).length;
+}

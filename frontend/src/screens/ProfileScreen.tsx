@@ -1,103 +1,160 @@
 import { useState } from 'react';
 import type { Client } from '../types';
 import { api } from '../api';
-import { Badge } from '../components/Badge';
-import { Checkbox } from '../components/Checkbox';
-import { FabricSwatch } from '../components/FabricSwatch';
-import { KV } from '../components/KV';
-import { Section } from '../components/Section';
+import { T, fabricVariant } from '../tokens';
+import { useIsMobile } from '../hooks/useIsMobile';
+import { Label, Mono, Serif, Badge, Swatch, Checkbox } from '../components/primitives';
+import { initials, parsePayments, getNextFitting } from '../lib/clientHelpers';
 
-interface Props { client: Client; onBack: () => void; animClass: string; }
+interface Props {
+  client: Client;
+  onBack: () => void;
+  onOpenFabrics: () => void;
+  onRefresh: () => void;
+}
 
-export function ProfileScreen({ client: initial, onBack, animClass }: Props) {
+export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefresh }: Props) {
   const [c, setC] = useState<Client>(initial);
-  const past = c.days_until < 0;
+  const mobile = useIsMobile();
 
-  const handleToggleBuy = async (fabricId: number, current: boolean) => {
+  if (!c) return null;
+
+  const past = c.days_until < 0;
+  const { priceTotal, paid } = parsePayments(c.payments);
+  const pct = priceTotal && priceTotal > 0 ? Math.min(100, Math.round((paid / priceTotal) * 100)) : 0;
+  const nextFitting = getNextFitting(c.appointments);
+  const px = mobile ? 20 : 40;
+
+  const handleToggle = async (fabricId: number, current: boolean) => {
     await api.patchFabric(fabricId, { to_buy: !current });
     const updated = await api.getClient(c.id);
     setC(updated);
+    onRefresh();
   };
 
   return (
-    <div className={animClass} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-app)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 16px', flexShrink: 0 }}>
-        <button onClick={onBack} style={{ display: 'flex', alignItems: 'center', gap: 5, background: 'none', border: 'none', color: 'var(--accent)', fontFamily: 'var(--font-u)', fontSize: 13, padding: '4px 0' }}>
-          <svg width="8" height="13" viewBox="0 0 8 13" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M7 1L1 6.5L7 12"/></svg>
-          Clientes
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+      {/* Back bar */}
+      <div style={{ padding: `10px ${px}px`, borderBottom: `1px solid ${T.hairline}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: T.mono, fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase', color: T.ink2, padding: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+          ← Clientes
         </button>
-        <span style={{ fontFamily: 'var(--font-m)', fontSize: 9, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--ink-3)' }}>Edita</span>
+        <Label style={{ color: T.ink3 }}>02 · Fitxa</Label>
       </div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: '6px 20px 24px' }}>
-        <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start', marginBottom: 16 }}>
-          <div style={{
-            width: 72, height: 72, borderRadius: '50%', flexShrink: 0, border: '1px solid var(--line)',
-            background: 'linear-gradient(135deg,var(--line) 0%,var(--line-l) 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontFamily: 'var(--font-d)', fontSize: 28, fontStyle: 'italic', color: 'var(--ink-3)',
-          }}>
-            {c.name[0]}
+
+      {/* Hero */}
+      <div style={{ padding: `${mobile ? 20 : 28}px ${px}px ${mobile ? 18 : 22}px`, borderBottom: `1px solid ${T.hairline}`, background: T.paper, flexShrink: 0, display: 'flex', alignItems: 'flex-start', gap: 20 }}>
+        <div style={{ width: mobile ? 52 : 68, height: mobile ? 52 : 68, borderRadius: '50%', background: T.paper3, border: `1px solid ${T.hairline}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: T.serif, fontStyle: 'italic', fontSize: mobile ? 20 : 26, color: T.ink2 }}>{initials(c.name)}</div>
+        <div style={{ flex: 1 }}>
+          <Serif size={mobile ? 32 : 40} italic>{c.name}</Serif>
+          <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Badge status={c.status} />
+            {nextFitting && <Mono size={10} color={T.ink3}>{nextFitting}</Mono>}
           </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: 'var(--font-d)', fontSize: 26, color: 'var(--ink-1)', letterSpacing: '-.3px', lineHeight: 1.1 }}>{c.name}</div>
-            <div style={{ fontFamily: 'var(--font-m)', fontSize: 10, color: 'var(--ink-3)', marginTop: 4, lineHeight: 1.9 }}>
-              {c.phone}<br/>{c.email}
+          {(c.phone || c.email) && (
+            <div style={{ marginTop: 8, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+              {c.phone && <Mono size={10} color={T.ink2}>{c.phone}</Mono>}
+              {c.email && <Mono size={10} color={T.ink2}>{c.email}</Mono>}
             </div>
-            <div style={{ marginTop: 8 }}><Badge status={c.status} /></div>
+          )}
+        </div>
+      </div>
+
+      {/* Scrollable content */}
+      <div style={{ flex: 1, overflow: 'auto', padding: `${mobile ? 20 : 28}px ${px}px 40px` }}>
+
+        {/* Countdown card */}
+        {c.status !== 'entregada' && (
+          <div style={{ background: T.ink, color: T.paper, padding: '18px 22px', marginBottom: 24 }}>
+            <Label style={{ color: 'rgba(246,241,232,0.55)', marginBottom: 8 }}>Compte enrere · Boda</Label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <Serif size={52} italic style={{ color: T.paper }}>{past ? `−${Math.abs(c.days_until)}` : c.days_until}</Serif>
+                <Mono size={11} color="rgba(246,241,232,0.55)">dies</Mono>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <Mono size={10} color="rgba(246,241,232,0.55)">Data</Mono>
+                <div style={{ fontFamily: T.mono, fontSize: 13, color: T.gold, marginTop: 2 }}>{c.wedding_date}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Payment progress */}
+        {priceTotal !== null && (
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <Label>Pagaments</Label>
+              <Mono size={10}>{paid > 0 ? `€${paid.toLocaleString()}` : '—'} / {priceTotal > 0 ? `€${priceTotal.toLocaleString()}` : '—'}</Mono>
+            </div>
+            <div style={{ height: 4, background: T.hairline, borderRadius: 2 }}>
+              <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? T.accent : T.gold, borderRadius: 2 }} />
+            </div>
+            <div style={{ marginTop: 8 }}>
+              {c.payments.map((p, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: i < c.payments.length - 1 ? `1px solid ${T.hairline}` : 'none' }}>
+                  <Mono size={10} color={T.ink3}>{p.label}</Mono>
+                  <Mono size={10} color={T.ink}>{p.value}</Mono>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Peça */}
+        <div style={{ marginBottom: 24 }}>
+          <Label style={{ marginBottom: 10 }}>Peça</Label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {([['Tipus', c.garment], ['Estil', c.garment_style], ['Data mides', c.measurements_date]] as [string, string][]).map(([k, v]) => v ? (
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${T.hairline}` }}>
+                <Mono size={10} color={T.ink3}>{k}</Mono>
+                <Mono size={10} color={T.ink}>{v}</Mono>
+              </div>
+            ) : null)}
           </div>
         </div>
-        {c.status !== 'entregada' && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 15px', marginBottom: 20, background: 'var(--bg-card)', border: '1px solid var(--line)', borderRadius: 6 }}>
-            <div>
-              <div style={{ fontFamily: 'var(--font-m)', fontSize: 8, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 3 }}>Boda</div>
-              <div style={{ fontFamily: 'var(--font-m)', fontSize: 14, color: 'var(--ink-1)', fontWeight: 500 }}>{c.wedding_date}</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontFamily: 'var(--font-m)', fontSize: 8, letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--ink-3)', marginBottom: 3 }}>Compte enrere</div>
-              <div style={{ fontFamily: 'var(--font-d)', fontSize: 28, color: 'var(--ink-1)', fontStyle: 'italic' }}>{past ? `−${Math.abs(c.days_until)}` : c.days_until} dies</div>
-            </div>
-          </div>
-        )}
-        <Section title="Peça">
-          <KV k="Tipus" v={c.garment || '—'} />
-          <KV k="Estil" v={c.garment_style || '—'} />
-          <KV k="Mides" v={c.measurements_date || '—'} />
-        </Section>
+
+        {/* Teles */}
         {c.fabrics.length > 0 && (
-          <Section title={`Teles (${c.fabrics.length})`} action="Veure totes →">
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+              <Label>Teles ({c.fabrics.length})</Label>
+              <button onClick={onOpenFabrics} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: T.mono, fontSize: 9, letterSpacing: 0.8, textTransform: 'uppercase', color: T.ink3, padding: 0 }}>Veure totes →</button>
+            </div>
             {c.fabrics.map((f, i) => (
-              <div key={f.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '9px 0', borderBottom: i < c.fabrics.length - 1 ? '1px dashed var(--line-l)' : 'none' }}>
-                <Checkbox checked={f.to_buy} onChange={() => handleToggleBuy(f.id, f.to_buy)} />
-                <FabricSwatch size={28} />
+              <div key={f.id} style={{ display: 'flex', gap: 10, alignItems: 'center', padding: '10px 0', borderBottom: i < c.fabrics.length - 1 ? `1px dashed ${T.hairline}` : 'none' }}>
+                <Checkbox checked={f.to_buy} onChange={() => handleToggle(f.id, f.to_buy)} />
+                <Swatch size={32} variant={fabricVariant(f.name)} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontFamily: 'var(--font-u)', fontSize: 12, fontWeight: 500, color: 'var(--ink-1)' }}>{f.name}</div>
-                  <div style={{ fontFamily: 'var(--font-m)', fontSize: 9, color: 'var(--ink-3)', marginTop: 1 }}>{f.use} · {f.qty} · {f.price}</div>
+                  <div style={{ fontFamily: T.sans, fontSize: 12, fontWeight: 500, color: T.ink }}>{f.name}</div>
+                  <Mono size={9} color={T.ink3}>{f.use} · {f.qty} · {f.price}</Mono>
                 </div>
-                {f.to_buy && (
-                  <span style={{ fontFamily: 'var(--font-m)', fontSize: 7, letterSpacing: '.5px', textTransform: 'uppercase', color: 'var(--accent)', border: '1px solid var(--accent)', padding: '1px 4px', borderRadius: 1, flexShrink: 0 }}>Comprar</span>
-                )}
+                {f.to_buy && <span style={{ fontFamily: T.mono, fontSize: 8, letterSpacing: 0.5, textTransform: 'uppercase', color: T.accent, border: `1px solid ${T.accent}`, padding: '2px 5px', flexShrink: 0 }}>Comprar</span>}
               </div>
             ))}
-          </Section>
+          </div>
         )}
+
+        {/* Cites */}
         {c.appointments.length > 0 && (
-          <Section title="Cites" action="+ Afegir">
-            {c.appointments.map((a, i) => <KV key={i} k={a.label} v={a.value} />)}
-          </Section>
-        )}
-        {c.payments.length > 0 && (
-          <Section title="Pagaments">
-            {c.payments.map((p, i) => <KV key={i} k={p.label} v={p.value} />)}
-          </Section>
-        )}
-        <Section title="Notes">
-          {c.notes
-            ? <div style={{ fontFamily: 'var(--font-u)', fontSize: 13, color: 'var(--ink-2)', lineHeight: 1.65 }}>{c.notes}</div>
-            : <div style={{ opacity: .25, display: 'flex', flexDirection: 'column', gap: 5 }}>
-                {[100, 78, 52].map((w, i) => <div key={i} style={{ height: 7, width: `${w}%`, background: 'var(--ink-3)', borderRadius: 2 }}/>)}
+          <div style={{ marginBottom: 24 }}>
+            <Label style={{ marginBottom: 10 }}>Cites</Label>
+            {c.appointments.map((a, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${T.hairline}` }}>
+                <Mono size={11} color={T.ink2}>{a.label}</Mono>
+                <Mono size={11} color={T.ink}>{a.value}</Mono>
               </div>
-          }
-        </Section>
+            ))}
+          </div>
+        )}
+
+        {/* Notes */}
+        {c.notes && (
+          <div style={{ marginBottom: 24 }}>
+            <Label style={{ marginBottom: 8 }}>Notes</Label>
+            <div style={{ fontFamily: T.sans, fontSize: 13, color: T.ink2, lineHeight: 1.65 }}>{c.notes}</div>
+          </div>
+        )}
       </div>
     </div>
   );
