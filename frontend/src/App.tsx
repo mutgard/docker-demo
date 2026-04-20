@@ -3,7 +3,7 @@ import type { Client } from './types';
 import { T } from './tokens';
 import { useIsMobile } from './hooks/useIsMobile';
 import { Sidebar } from './components/Sidebar';
-import { MobileTopBar, MobileTabBar } from './components/MobileShell';
+import { MobileHeader } from './components/MobileShell';
 import { ClientsScreen } from './screens/ClientsScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { FabricsScreen } from './screens/FabricsScreen';
@@ -46,10 +46,9 @@ export default function App() {
 
   if (mobile) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.paper, color: T.ink, fontFamily: T.sans }}>
-        <MobileTopBar />
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>{content}</div>
-        <MobileTabBar active={screen} onNav={nav} fabricsToBuy={fabricsToBuy} />
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', background: T.paper, color: T.ink, fontFamily: T.sans }}>
+        <MobileHeader active={screen} onNav={nav} fabricsToBuy={fabricsToBuy} />
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', paddingBottom: 'env(safe-area-inset-bottom)' }}>{content}</div>
       </div>
     );
   }
