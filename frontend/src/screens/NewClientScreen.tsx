@@ -45,7 +45,7 @@ export function NewClientScreen({ onCancel, onSuccess }: Props) {
   const px = mobile ? 20 : 40;
   const s = T.badge[status];
 
-  const fieldInput = (hasError = false): React.CSSProperties => ({
+  const fieldInput = (hasError = false) => ({
     border: 'none',
     borderBottom: `1px solid ${hasError ? T.accent : T.hairline2}`,
     background: 'transparent',
@@ -105,7 +105,7 @@ export function NewClientScreen({ onCancel, onSuccess }: Props) {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontFamily: T.serif, fontStyle: 'italic', fontSize: mobile ? 20 : 26, color: T.ink2,
           }}>
-            {name.trim() ? initials(name) : '?'}
+            {name.trim() ? initials(name.trim()) : '?'}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <input
