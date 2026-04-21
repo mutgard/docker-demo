@@ -33,6 +33,11 @@ app.include_router(intake_router)
 app.include_router(brief_router)
 
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 import os
 if os.path.isdir("static"):
-    app.mount("/", StaticFiles(directory="static", html=True), name="static")
+    app.mount("/assets", StaticFiles(directory="static/assets"), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        return FileResponse("static/index.html")
