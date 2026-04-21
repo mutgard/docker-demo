@@ -31,9 +31,9 @@ export const api = {
     return r.json();
   },
   getBrief: async (token: string): Promise<ClientBrief | null> => {
-    const r = await fetch(`${BASE}/brief/${token}`);
+    const r = await fetch(`${BASE}/api/brief/${token}`);
     if (r.status === 404) return null;
-    if (!r.ok) throw new Error(`GET /brief/${token} → ${r.status}`);
+    if (!r.ok) throw new Error(`GET /api/brief/${token} → ${r.status}`);
     return r.json();
   },
 };

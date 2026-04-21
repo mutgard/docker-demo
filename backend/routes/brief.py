@@ -3,7 +3,7 @@ import json
 import os
 import glob
 
-router = APIRouter(prefix="/brief", tags=["brief"])
+router = APIRouter(prefix="/api/brief", tags=["brief"])
 
 @router.get("/{token}")
 def get_brief(token: str):
