@@ -17,6 +17,16 @@ interface Props {
 export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefresh }: Props) {
   const [c, setC] = useState<Client>(initial);
   const mobile = useIsMobile();
+  const [tab, setTab] = useState<'fitxa' | 'ingres'>('fitxa');
+  const [briefToken, setBriefToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!c) return;
+    api.getIntake(c.id)
+      .then(data => setBriefToken(data?.token ?? null))
+      .catch(() => setBriefToken(null));
+  }, [c?.id]);
 
   if (!c) return null;
 
@@ -25,21 +35,16 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
   const pct = priceTotal && priceTotal > 0 ? Math.min(100, Math.round((paid / priceTotal) * 100)) : 0;
   const nextFitting = getNextFitting(c.appointments);
   const px = mobile ? 20 : 40;
-  const [tab, setTab] = useState<'fitxa' | 'ingres'>('fitxa');
-  const [briefToken, setBriefToken] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-
-  useEffect(() => {
-    api.getIntake(c.id)
-      .then(data => setBriefToken(data?.token ?? null))
-      .catch(() => setBriefToken(null));
-  }, [c.id]);
 
   const handleCopyLink = async () => {
     if (!briefToken) return;
-    await navigator.clipboard.writeText(`${window.location.origin}/brief/${briefToken}`);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(`${window.location.origin}/brief/${briefToken}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // clipboard not available — silently fail
+    }
   };
 
   const handleToggle = async (fabricId: number, current: boolean) => {

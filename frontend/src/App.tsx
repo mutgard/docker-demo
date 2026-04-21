@@ -16,9 +16,13 @@ type Screen = 'clients' | 'profile' | 'fabrics' | 'shop';
 export default function App() {
   const pathname = window.location.pathname;
   if (pathname.startsWith('/brief/')) {
-    const token = pathname.replace('/brief/', '');
+    const token = pathname.slice('/brief/'.length);
     return <BriefPage token={token} />;
   }
+  return <AtelierApp />;
+}
+
+function AtelierApp() {
   const mobile = useIsMobile();
   const [screen, setScreen] = useState<Screen>('clients');
   const [clientId, setClientId] = useState<number | null>(null);
