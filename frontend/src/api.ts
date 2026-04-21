@@ -16,7 +16,7 @@ async function patch<T>(path: string, body: unknown): Promise<T> {
   return r.json();
 }
 
-import type { Client, Fabric, ShoppingItem, IntakeData } from './types';
+import type { Client, Fabric, ShoppingItem, IntakeData, ClientBrief } from './types';
 
 export const api = {
   listClients: () => get<Client[]>('/clients'),
@@ -28,6 +28,12 @@ export const api = {
     const r = await fetch(`${BASE}/clients/${id}/intake`);
     if (r.status === 404) return null;
     if (!r.ok) throw new Error(`GET /clients/${id}/intake → ${r.status}`);
+    return r.json();
+  },
+  getBrief: async (token: string): Promise<ClientBrief | null> => {
+    const r = await fetch(`${BASE}/brief/${token}`);
+    if (r.status === 404) return null;
+    if (!r.ok) throw new Error(`GET /brief/${token} → ${r.status}`);
     return r.json();
   },
 };

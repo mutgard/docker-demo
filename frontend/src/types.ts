@@ -68,6 +68,7 @@ export interface WhatsAppMessage {
 
 export interface WhatsAppIntake {
   source: 'whatsapp';
+  token?: string;
   thread: WhatsAppMessage[];
   brief: IntakeBrief;
   documents: IntakeDocument[];
@@ -75,6 +76,7 @@ export interface WhatsAppIntake {
 
 export interface WebFormIntake {
   source: 'web_form';
+  token?: string;
   submitted_at: string;
   form_data: Record<string, string>;
   brief: IntakeBrief;
@@ -82,3 +84,12 @@ export interface WebFormIntake {
 }
 
 export type IntakeData = WhatsAppIntake | WebFormIntake;
+
+export interface ClientBrief {
+  client_name: string;
+  wedding_date: string;
+  venue: string;
+  garment: string;
+  style: string;
+  fabric_notes: string;
+}
