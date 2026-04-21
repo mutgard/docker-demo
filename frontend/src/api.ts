@@ -1,5 +1,7 @@
 const BASE = import.meta.env.VITE_API_URL ?? '';
 
+import type { Client, Fabric, ShoppingItem, IntakeData, ClientBrief, ClientCreate } from './types';
+
 async function get<T>(path: string): Promise<T> {
   const r = await fetch(`${BASE}${path}`);
   if (!r.ok) throw new Error(`GET ${path} → ${r.status}`);
@@ -25,8 +27,6 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   if (!r.ok) throw new Error(`POST ${path} → ${r.status}`);
   return r.json();
 }
-
-import type { Client, Fabric, ShoppingItem, IntakeData, ClientBrief, ClientCreate } from './types';
 
 export const api = {
   listClients: () => get<Client[]>('/clients'),
