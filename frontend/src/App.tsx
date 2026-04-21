@@ -9,10 +9,16 @@ import { ProfileScreen } from './screens/ProfileScreen';
 import { FabricsScreen } from './screens/FabricsScreen';
 import { ShoppingScreen } from './screens/ShoppingScreen';
 import { api } from './api';
+import { BriefPage } from './pages/BriefPage';
 
 type Screen = 'clients' | 'profile' | 'fabrics' | 'shop';
 
 export default function App() {
+  const pathname = window.location.pathname;
+  if (pathname.startsWith('/brief/')) {
+    const token = pathname.replace('/brief/', '');
+    return <BriefPage token={token} />;
+  }
   const mobile = useIsMobile();
   const [screen, setScreen] = useState<Screen>('clients');
   const [clientId, setClientId] = useState<number | null>(null);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Client } from '../types';
 import { api } from '../api';
 import { T, fabricVariant } from '../tokens';
@@ -26,6 +26,21 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
   const nextFitting = getNextFitting(c.appointments);
   const px = mobile ? 20 : 40;
   const [tab, setTab] = useState<'fitxa' | 'ingres'>('fitxa');
+  const [briefToken, setBriefToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    api.getIntake(c.id)
+      .then(data => setBriefToken(data?.token ?? null))
+      .catch(() => setBriefToken(null));
+  }, [c.id]);
+
+  const handleCopyLink = async () => {
+    if (!briefToken) return;
+    await navigator.clipboard.writeText(`${window.location.origin}/brief/${briefToken}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleToggle = async (fabricId: number, current: boolean) => {
     await api.patchFabric(fabricId, { to_buy: !current });
@@ -41,7 +56,22 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
         <button onClick={onBack} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: T.mono, fontSize: 10, letterSpacing: 0.8, textTransform: 'uppercase', color: T.ink2, padding: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
           ← Clientes
         </button>
-        <Label style={{ color: T.ink3 }}>02 · Fitxa</Label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          {briefToken && (
+            <button
+              onClick={handleCopyLink}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontFamily: T.mono, fontSize: 10, letterSpacing: 0.8,
+                textTransform: 'uppercase', padding: 0,
+                color: copied ? T.accent : T.ink3,
+              }}
+            >
+              {copied ? 'Copiat ✓' : 'Copiar link'}
+            </button>
+          )}
+          <Label style={{ color: T.ink3 }}>02 · Fitxa</Label>
+        </div>
       </div>
 
       {/* Hero */}
