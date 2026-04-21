@@ -44,6 +44,7 @@ export interface ClientCreate {
   wedding_date: string;
   days_until: number;
   status: ClientStatus;
+  wedding_date_iso?: string;
   garment?: string;
   garment_style?: string;
   measurements_date?: string;

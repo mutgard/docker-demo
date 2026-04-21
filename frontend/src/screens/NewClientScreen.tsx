@@ -70,6 +70,7 @@ export function NewClientScreen({ onCancel, onSuccess }: Props) {
         phone,
         email,
         wedding_date: formatWeddingDate(weddingDateISO),
+        wedding_date_iso: weddingDateISO,
         days_until: computeDaysUntil(weddingDateISO),
         status,
         garment,
