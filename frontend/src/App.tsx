@@ -8,6 +8,7 @@ import { ClientsScreen } from './screens/ClientsScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { FabricsScreen } from './screens/FabricsScreen';
 import { ShoppingScreen } from './screens/ShoppingScreen';
+import { NewClientScreen } from './screens/NewClientScreen';
 import { api } from './api';
 import { BriefPage } from './pages/BriefPage';
 
@@ -27,6 +28,7 @@ function AtelierApp() {
   const [screen, setScreen] = useState<Screen>('clients');
   const [clientId, setClientId] = useState<number | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => { api.listClients().then(setClients); }, []);
 
@@ -38,9 +40,17 @@ function AtelierApp() {
   const back = () => { setScreen('clients'); setClientId(null); };
   const refresh = () => api.listClients().then(setClients);
 
+  const handleCreateSuccess = (id: number) => {
+    setCreating(false);
+    refresh().then(() => openClient(id));
+  };
+
   const content = (
     <>
-      {screen === 'clients' && <ClientsScreen clients={clients} onOpen={openClient} />}
+      {screen === 'clients' && !creating && <ClientsScreen clients={clients} onOpen={openClient} onCreate={() => setCreating(true)} />}
+      {screen === 'clients' && creating && mobile && (
+        <NewClientScreen onCancel={() => setCreating(false)} onSuccess={handleCreateSuccess} />
+      )}
       {screen === 'profile' && clientId !== null && (
         <ProfileScreen
           client={clients.find(c => c.id === clientId) ?? clients[0]}
@@ -67,6 +77,25 @@ function AtelierApp() {
     <div style={{ display: 'grid', gridTemplateColumns: '232px 1fr', width: '100%', height: '100%', background: T.paper, color: T.ink, fontFamily: T.sans }}>
       <Sidebar active={screen} onNav={nav} fabricsToBuy={fabricsToBuy} totalClients={clients.length} totalFabrics={totalFabrics} />
       <div style={{ minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>{content}</div>
+      {creating && !mobile && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'rgba(42,31,20,0.45)',
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+          padding: '48px 24px',
+          overflowY: 'auto',
+        }}>
+          <div style={{
+            width: 480,
+            maxHeight: 'calc(100vh - 96px)',
+            background: T.paper,
+            boxShadow: '0 8px 48px rgba(0,0,0,0.28)',
+            display: 'flex', flexDirection: 'column',
+          }}>
+            <NewClientScreen onCancel={() => setCreating(false)} onSuccess={handleCreateSuccess} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
