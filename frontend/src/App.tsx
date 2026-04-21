@@ -35,7 +35,7 @@ function AtelierApp() {
   const fabricsToBuy = clients.flatMap(c => c.fabrics).filter(f => f.to_buy).length;
   const totalFabrics = clients.flatMap(c => c.fabrics).length;
 
-  const nav = (s: Screen) => { setScreen(s); if (s !== 'profile') setClientId(null); };
+  const nav = (s: Screen) => { setScreen(s); setCreating(false); if (s !== 'profile') setClientId(null); };
   const openClient = (id: number) => { setClientId(id); setScreen('profile'); };
   const back = () => { setScreen('clients'); setClientId(null); };
   const refresh = () => api.listClients().then(setClients);
