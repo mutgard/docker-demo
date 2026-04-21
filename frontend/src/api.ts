@@ -16,11 +16,22 @@ async function patch<T>(path: string, body: unknown): Promise<T> {
   return r.json();
 }
 
-import type { Client, Fabric, ShoppingItem, IntakeData, ClientBrief } from './types';
+async function post<T>(path: string, body: unknown): Promise<T> {
+  const r = await fetch(`${BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`POST ${path} → ${r.status}`);
+  return r.json();
+}
+
+import type { Client, Fabric, ShoppingItem, IntakeData, ClientBrief, ClientCreate } from './types';
 
 export const api = {
   listClients: () => get<Client[]>('/clients'),
   getClient: (id: number) => get<Client>(`/clients/${id}`),
+  createClient: (body: ClientCreate) => post<Client>('/clients', body),
   patchClient: (id: number, body: Partial<Client>) => patch<Client>(`/clients/${id}`, body),
   patchFabric: (id: number, body: { to_buy?: boolean }) => patch<Fabric>(`/fabrics/${id}`, body),
   getShopping: () => get<ShoppingItem[]>('/shopping'),

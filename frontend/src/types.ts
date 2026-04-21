@@ -39,6 +39,19 @@ export interface Client {
   payments: Payment[];
 }
 
+export interface ClientCreate {
+  name: string;
+  wedding_date: string;
+  days_until: number;
+  status: ClientStatus;
+  garment?: string;
+  garment_style?: string;
+  measurements_date?: string;
+  phone?: string;
+  email?: string;
+  notes?: string;
+}
+
 export interface ShoppingItem extends Fabric {
   client_id: number;
   client_name: string;
