@@ -2,7 +2,7 @@ const BASE = import.meta.env.VITE_API_URL ?? '';
 
 import type {
   Client, Fabric, ShoppingItem, IntakeData, ClientBrief, ClientCreate,
-  AtelierEvent, AppointmentCreate, DeliveryCreate,
+  AtelierEvent, AppointmentCreate, DeliveryCreate, PaymentCreate,
   DemoScenarioSummary, DemoScenario,
 } from './types';
 
@@ -43,6 +43,13 @@ export const api = {
   createClient:  (body: ClientCreate) => post<Client>('/clients', body),
   patchClient:   (id: number, body: Partial<Client>) => patch<Client>(`/clients/${id}`, body),
   patchFabric:   (id: number, body: { to_buy?: boolean }) => patch<Fabric>(`/fabrics/${id}`, body),
+
+  createPayment: (body: PaymentCreate) =>
+    post<{ id: number; client_id: number; label: string; value: string }>('/payments', body),
+  updatePayment: (id: number, body: { label?: string; value?: string }) =>
+    patch<{ id: number; client_id: number; label: string; value: string }>(`/payments/${id}`, body),
+  deletePayment: (id: number) =>
+    del(`/payments/${id}`),
   getShopping:   () => get<ShoppingItem[]>('/shopping'),
 
   listEvents: (from: string, to: string, clientId?: number) => {

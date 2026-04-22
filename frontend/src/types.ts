@@ -176,3 +176,9 @@ export interface DemoScenarioWebForm {
 }
 
 export type DemoScenario = DemoScenarioWhatsApp | DemoScenarioWebForm;
+
+export interface PaymentCreate {
+  client_id: number;
+  label: string;
+  value: string;
+}
