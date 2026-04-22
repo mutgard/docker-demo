@@ -131,7 +131,7 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
           ← Clientes
         </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          {briefToken && (
+          {!editing && briefToken && (
             <button
               onClick={handleCopyLink}
               style={{
@@ -143,6 +143,42 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
             >
               {copied ? 'Copiat ✓' : 'Copiar link'}
             </button>
+          )}
+          {!editing && (
+            <button
+              onClick={startEdit}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                fontFamily: T.mono, fontSize: 10, letterSpacing: 0.8,
+                textTransform: 'uppercase', padding: 0, color: T.ink3,
+              }}
+            >
+              Editar
+            </button>
+          )}
+          {editing && (
+            <>
+              <button
+                onClick={cancelEdit}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontFamily: T.mono, fontSize: 10, letterSpacing: 0.8,
+                  textTransform: 'uppercase', padding: 0, color: T.ink3,
+                }}
+              >
+                Cancel·lar
+              </button>
+              <button
+                onClick={saveEdit}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontFamily: T.mono, fontSize: 10, letterSpacing: 0.8,
+                  textTransform: 'uppercase', padding: 0, color: T.accent,
+                }}
+              >
+                Guardar
+              </button>
+            </>
           )}
           <Label style={{ color: T.ink3 }}>02 · Fitxa</Label>
         </div>
@@ -287,6 +323,9 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
             <Label style={{ marginBottom: 8 }}>Notes</Label>
             <div style={{ fontFamily: T.sans, fontSize: 13, color: T.ink2, lineHeight: 1.65 }}>{c.notes}</div>
           </div>
+        )}
+        {saveError && (
+          <Mono size={11} color={T.accent} style={{ marginBottom: 16, display: 'block' }}>{saveError}</Mono>
         )}
       </div>
       {tab === 'ingres' && (
