@@ -3,6 +3,7 @@ const BASE = import.meta.env.VITE_API_URL ?? '';
 import type {
   Client, Fabric, ShoppingItem, IntakeData, ClientBrief, ClientCreate,
   AtelierEvent, AppointmentCreate, DeliveryCreate,
+  DemoScenarioSummary, DemoScenario,
 } from './types';
 
 async function get<T>(path: string): Promise<T> {
@@ -76,4 +77,7 @@ export const api = {
     if (!r.ok) throw new Error(`GET /api/brief/${token} → ${r.status}`);
     return r.json();
   },
+
+  listDemoScenarios: () => get<DemoScenarioSummary[]>('/demo-scenarios'),
+  getDemoScenario:   (id: string) => get<DemoScenario>(`/demo-scenarios/${id}`),
 };

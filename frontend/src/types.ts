@@ -137,3 +137,42 @@ export interface DeliveryCreate {
   expected_date: string;
   received?: boolean;
 }
+
+export interface DemoScenarioSummary {
+  id: string;
+  label: string;
+}
+
+export interface DemoClientDefaults {
+  name: string;
+  wedding_date: string;
+  wedding_date_iso: string;
+  days_until: number;
+  status: ClientStatus;
+  garment: string;
+  garment_style: string;
+  phone: string;
+  email: string;
+  notes: string;
+}
+
+export interface DemoScenarioWhatsApp {
+  id: string;
+  label: string;
+  source: 'whatsapp';
+  thread: WhatsAppMessage[];
+  brief: IntakeBrief;
+  client_defaults: DemoClientDefaults;
+}
+
+export interface DemoScenarioWebForm {
+  id: string;
+  label: string;
+  source: 'web_form';
+  submitted_at: string;
+  form_data: Record<string, string>;
+  brief: IntakeBrief;
+  client_defaults: DemoClientDefaults;
+}
+
+export type DemoScenario = DemoScenarioWhatsApp | DemoScenarioWebForm;
