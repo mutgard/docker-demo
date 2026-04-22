@@ -45,3 +45,7 @@ def test_get_demo_scenario_boho(client):
 def test_get_demo_scenario_not_found(client):
     r = client.get("/demo-scenarios/nonexistent")
     assert r.status_code == 404
+
+def test_path_traversal_rejected(client):
+    r = client.get("/demo-scenarios/../../main")
+    assert r.status_code == 404
