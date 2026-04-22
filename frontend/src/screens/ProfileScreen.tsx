@@ -76,6 +76,15 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
     onRefresh();
   };
 
+  const fieldInput = {
+    border: 'none',
+    borderBottom: `1px solid ${T.hairline2}`,
+    background: 'transparent',
+    outline: 'none',
+    padding: '4px 0',
+    color: T.ink,
+  };
+
   const startEdit = () => {
     setDraft({
       name: c.name,
@@ -188,20 +197,56 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
       <div style={{ padding: `${mobile ? 20 : 28}px ${px}px ${mobile ? 18 : 22}px`, borderBottom: `1px solid ${T.hairline}`, background: T.paper, flexShrink: 0, display: 'flex', alignItems: 'flex-start', gap: 20 }}>
         <div style={{ width: mobile ? 52 : 68, height: mobile ? 52 : 68, borderRadius: '50%', background: T.paper3, border: `1px solid ${T.hairline}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: T.serif, fontStyle: 'italic', fontSize: mobile ? 20 : 26, color: T.ink2 }}>{initials(c.name)}</div>
         <div style={{ flex: 1 }}>
-          <Serif size={mobile ? 32 : 40} italic>{c.name}</Serif>
+          {editing ? (
+            <input
+              value={draft.name}
+              onChange={e => setDraft(d => ({ ...d, name: e.target.value }))}
+              style={{ ...fieldInput, fontFamily: T.serif, fontSize: mobile ? 28 : 36, fontStyle: 'italic', letterSpacing: -0.5, width: '100%' }}
+            />
+          ) : (
+            <Serif size={mobile ? 32 : 40} italic>{c.name}</Serif>
+          )}
           <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Badge status={c.status} />
-            {clientEvents.length > 0 && (
+            {editing ? (
+              <select
+                value={draft.status}
+                onChange={e => setDraft(d => ({ ...d, status: e.target.value as import('../types').ClientStatus }))}
+                style={{
+                  appearance: 'none', WebkitAppearance: 'none',
+                  border: `1px solid ${T.hairline2}`,
+                  background: 'transparent', color: T.ink,
+                  fontFamily: T.mono, fontSize: 10, letterSpacing: 0.8,
+                  textTransform: 'uppercase', padding: '3px 10px',
+                  borderRadius: 999, cursor: 'pointer', outline: 'none',
+                }}
+              >
+                {(['prospect', 'sense-paga', 'clienta', 'entregada'] as const).map(s => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            ) : (
+              <Badge status={c.status} />
+            )}
+            {!editing && clientEvents.length > 0 && (
               <Mono size={10} color={T.ink3}>
                 {clientEvents[0].title} · {clientEvents[0].date}
               </Mono>
             )}
           </div>
-          {(c.phone || c.email) && (
-            <div style={{ marginTop: 8, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-              {c.phone && <Mono size={10} color={T.ink2}>{c.phone}</Mono>}
-              {c.email && <Mono size={10} color={T.ink2}>{c.email}</Mono>}
+          {editing ? (
+            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <input value={draft.phone} onChange={e => setDraft(d => ({ ...d, phone: e.target.value }))}
+                placeholder="Telèfon" style={{ ...fieldInput, fontFamily: T.mono, fontSize: 12, color: T.ink2 }} />
+              <input value={draft.email} onChange={e => setDraft(d => ({ ...d, email: e.target.value }))}
+                placeholder="Email" type="email" style={{ ...fieldInput, fontFamily: T.mono, fontSize: 12, color: T.ink2 }} />
             </div>
+          ) : (
+            (c.phone || c.email) ? (
+              <div style={{ marginTop: 8, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+                {c.phone && <Mono size={10} color={T.ink2}>{c.phone}</Mono>}
+                {c.email && <Mono size={10} color={T.ink2}>{c.email}</Mono>}
+              </div>
+            ) : null
           )}
         </div>
       </div>
