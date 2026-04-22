@@ -10,6 +10,7 @@ from routes.appointments import router as appointments_router
 from routes.deliveries import router as deliveries_router
 from routes.events import router as events_router
 from routes.demo import router as demo_router
+from routes.payments import router as payments_router
 
 app = FastAPI(title="Juliette Atelier API")
 
@@ -40,6 +41,7 @@ app.include_router(appointments_router)
 app.include_router(deliveries_router)
 app.include_router(events_router)
 app.include_router(demo_router)
+app.include_router(payments_router)
 
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
