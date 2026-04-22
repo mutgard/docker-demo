@@ -4,7 +4,7 @@ import { T } from '../tokens';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { PageHeader } from '../components/PageHeader';
 import { Badge, Mono } from '../components/primitives';
-import { initials } from '../lib/clientHelpers';
+import { initials, parsePayments } from '../lib/clientHelpers';
 
 interface Props { clients: Client[]; onOpen: (id: number) => void; onCreate: () => void; }
 
@@ -20,6 +20,24 @@ export function ClientsScreen({ clients, onOpen, onCreate }: Props) {
   const mobile = useIsMobile();
   const [filter, setFilter] = useState('totes');
   const [search, setSearch] = useState('');
+  type SortKey = 'days_until' | 'name' | 'status';
+  type SortDir = 'asc' | 'desc';
+  const [sortKey, setSortKey] = useState<SortKey>('days_until');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
+  const sortArrow = (key: SortKey) => {
+    if (sortKey !== key) return null;
+    return <span style={{ marginLeft: 4, fontSize: 8 }}>{sortDir === 'asc' ? '▲' : '▼'}</span>;
+  };
 
   const list = clients
     .filter(c => {
@@ -27,9 +45,25 @@ export function ClientsScreen({ clients, onOpen, onCreate }: Props) {
       const okS = !search || c.name.toLowerCase().includes(search.toLowerCase());
       return okF && okS;
     })
-    .sort((a, b) => a.days_until - b.days_until);
+    .sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === 'days_until') cmp = a.days_until - b.days_until;
+      if (sortKey === 'name') cmp = a.name.localeCompare(b.name);
+      if (sortKey === 'status') {
+        const order = ['prospect', 'sense-paga', 'clienta', 'entregada'];
+        cmp = order.indexOf(a.status) - order.indexOf(b.status);
+      }
+      return sortDir === 'asc' ? cmp : -cmp;
+    });
 
   const px = mobile ? 20 : 40;
+
+  const urgency = (days: number, status: string): 'critical' | 'warning' | 'none' => {
+    if (status === 'entregada') return 'none';
+    if (days <= 14 && days >= 0) return 'critical';
+    if (days <= 30 && days >= 0) return 'warning';
+    return 'none';
+  };
 
   const plusButton = (
     <button
@@ -85,8 +119,28 @@ export function ClientsScreen({ clients, onOpen, onCreate }: Props) {
           <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16 }}>
             <thead>
               <tr>
-                {['Clienta', 'Peça', 'Estat', 'Boda', 'Dies', 'Teles'].map(h => (
-                  <th key={h} style={{ textAlign: 'left', padding: '8px 12px 8px 0', fontFamily: T.mono, fontSize: 9, letterSpacing: 1, textTransform: 'uppercase', color: T.ink3, borderBottom: `1px solid ${T.hairline}`, fontWeight: 400 }}>{h}</th>
+                {([
+                  { label: 'Clienta', key: 'name' as SortKey },
+                  { label: 'Peça', key: null },
+                  { label: 'Estat', key: 'status' as SortKey },
+                  { label: 'Boda', key: null },
+                  { label: 'Dies', key: 'days_until' as SortKey },
+                  { label: 'Teles', key: null },
+                  { label: 'Pendent', key: null },
+                ]).map(({ label, key }) => (
+                  <th key={label}
+                    onClick={key ? () => toggleSort(key) : undefined}
+                    style={{
+                      textAlign: 'left', padding: '8px 12px 8px 0',
+                      fontFamily: T.mono, fontSize: 9, letterSpacing: 1, textTransform: 'uppercase',
+                      color: key && sortKey === key ? T.ink2 : T.ink3,
+                      borderBottom: `1px solid ${T.hairline}`, fontWeight: 400,
+                      cursor: key ? 'pointer' : 'default',
+                      userSelect: 'none',
+                    }}
+                  >
+                    {label}{key && sortArrow(key)}
+                  </th>
                 ))}
               </tr>
             </thead>
@@ -94,9 +148,21 @@ export function ClientsScreen({ clients, onOpen, onCreate }: Props) {
               {list.map(c => {
                 const past = c.days_until < 0;
                 return (
-                  <tr key={c.id} onClick={() => onOpen(c.id)} style={{ cursor: 'pointer', borderBottom: `1px solid ${T.hairline}` }}
+                  <tr
+                    key={c.id}
+                    onClick={() => onOpen(c.id)}
+                    style={{
+                      cursor: 'pointer',
+                      borderBottom: `1px solid ${T.hairline}`,
+                      borderLeft: urgency(c.days_until, c.status) === 'critical'
+                        ? `3px solid ${T.accent}`
+                        : urgency(c.days_until, c.status) === 'warning'
+                        ? `3px solid ${T.gold}`
+                        : '3px solid transparent',
+                    }}
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = T.paper2; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+                  >
                     <td style={{ padding: '13px 12px 13px 0' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <div style={{ width: 32, height: 32, borderRadius: '50%', background: T.paper3, border: `1px solid ${T.hairline}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: T.serif, fontSize: 13, fontStyle: 'italic', color: T.ink2, flexShrink: 0 }}>{initials(c.name)}</div>
@@ -109,8 +175,18 @@ export function ClientsScreen({ clients, onOpen, onCreate }: Props) {
                     <td style={{ padding: '13px 12px 13px 0' }}>
                       <Mono size={11} color={past ? T.accent : T.ink2}>{past ? `−${Math.abs(c.days_until)}d` : `${c.days_until}d`}</Mono>
                     </td>
-                    <td style={{ padding: '13px 0' }}>
+                    <td style={{ padding: '13px 12px 13px 0' }}>
                       <Mono size={11} color={T.ink3}>{c.fabrics.length > 0 ? String(c.fabrics.length) : '—'}</Mono>
+                    </td>
+                    <td style={{ padding: '13px 0' }}>
+                      {(() => {
+                        const { priceTotal, paid } = parsePayments(c.payments);
+                        if (priceTotal === null || priceTotal === 0) return <Mono size={11} color={T.ink3}>—</Mono>;
+                        const outstanding = Math.max(0, priceTotal - paid);
+                        return outstanding > 0
+                          ? <Mono size={11} color={T.gold}>€{outstanding.toLocaleString('ca-ES')}</Mono>
+                          : <Mono size={11} color={T.ink3}>✓</Mono>;
+                      })()}
                     </td>
                   </tr>
                 );
@@ -133,7 +209,23 @@ export function ClientsScreen({ clients, onOpen, onCreate }: Props) {
         {list.map(c => {
           const past = c.days_until < 0;
           return (
-            <div key={c.id} onClick={() => onOpen(c.id)} style={{ background: T.vellum, border: `1px solid ${T.hairline}`, borderRadius: 4, padding: '14px', marginBottom: 8, cursor: 'pointer' }}>
+            <div
+              key={c.id}
+              onClick={() => onOpen(c.id)}
+              style={{
+                background: T.vellum,
+                border: `1px solid ${T.hairline}`,
+                borderLeft: urgency(c.days_until, c.status) === 'critical'
+                  ? `3px solid ${T.accent}`
+                  : urgency(c.days_until, c.status) === 'warning'
+                  ? `3px solid ${T.gold}`
+                  : `1px solid ${T.hairline}`,
+                borderRadius: 4,
+                padding: '14px',
+                marginBottom: 8,
+                cursor: 'pointer',
+              }}
+            >
               <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginBottom: 10 }}>
                 <div style={{ width: 40, height: 40, borderRadius: '50%', background: T.paper3, border: `1px solid ${T.hairline}`, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: T.serif, fontSize: 16, fontStyle: 'italic', color: T.ink2 }}>{initials(c.name)}</div>
                 <div style={{ flex: 1 }}>
