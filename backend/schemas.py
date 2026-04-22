@@ -21,6 +21,7 @@ class ClientCreate(BaseModel):
     name: str
     wedding_date: str
     days_until: int
+    wedding_date_iso: str = ""
     status: str
     garment: str = ""
     garment_style: str = ""

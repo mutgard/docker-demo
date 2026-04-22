@@ -6,7 +6,7 @@ import { PageHeader } from '../components/PageHeader';
 import { Badge, Mono } from '../components/primitives';
 import { initials } from '../lib/clientHelpers';
 
-interface Props { clients: Client[]; onOpen: (id: number) => void; }
+interface Props { clients: Client[]; onOpen: (id: number) => void; onCreate: () => void; }
 
 const CHIPS = [
   { id: 'totes', l: 'Totes' },
@@ -16,7 +16,7 @@ const CHIPS = [
   { id: 'entregada', l: 'Entregada' },
 ];
 
-export function ClientsScreen({ clients, onOpen }: Props) {
+export function ClientsScreen({ clients, onOpen, onCreate }: Props) {
   const mobile = useIsMobile();
   const [filter, setFilter] = useState('totes');
   const [search, setSearch] = useState('');
@@ -30,6 +30,23 @@ export function ClientsScreen({ clients, onOpen }: Props) {
     .sort((a, b) => a.days_until - b.days_until);
 
   const px = mobile ? 20 : 40;
+
+  const plusButton = (
+    <button
+      onClick={onCreate}
+      style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        width: 34, height: 34, flexShrink: 0,
+        border: `1px solid ${T.hairline2}`, background: T.vellum,
+        cursor: 'pointer', borderRadius: 2,
+      }}
+      title="Nova clienta"
+    >
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke={T.ink2} strokeWidth="1.6" strokeLinecap="round">
+        <path d="M7 1v12M1 7h12"/>
+      </svg>
+    </button>
+  );
 
   const searchBox = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: `1px solid ${T.hairline}`, padding: '7px 12px', borderRadius: 2, background: T.vellum, minWidth: mobile ? 'auto' : 220 }}>
@@ -62,7 +79,7 @@ export function ClientsScreen({ clients, onOpen }: Props) {
   if (!mobile) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-        <PageHeader eyebrow="Atelier · Taller" title="Clientes" subtitle={`${clients.length} noives`} right={searchBox} />
+        <PageHeader eyebrow="Atelier · Taller" title="Clientes" subtitle={`${clients.length} noives`} right={<>{searchBox}{plusButton}</>} />
         <div style={{ padding: `14px ${px}px 0`, flexShrink: 0 }}>{chips}</div>
         <div style={{ flex: 1, overflow: 'auto', padding: `0 ${px}px 32px` }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16 }}>
@@ -110,7 +127,7 @@ export function ClientsScreen({ clients, onOpen }: Props) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      <PageHeader eyebrow="Atelier" title="Clientes" subtitle={`${clients.length}`} right={searchBox} />
+      <PageHeader eyebrow="Atelier" title="Clientes" subtitle={`${clients.length}`} right={<>{searchBox}{plusButton}</>} />
       <div style={{ padding: '10px 20px 0', flexShrink: 0 }}>{chips}</div>
       <div style={{ flex: 1, overflow: 'auto', padding: '10px 16px 24px' }}>
         {list.map(c => {

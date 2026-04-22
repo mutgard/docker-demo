@@ -38,6 +38,7 @@ def list_clients(session: Session = Depends(get_session)):
 def create_client(body: ClientCreate, session: Session = Depends(get_session)):
     c = Client(name=body.name, wedding_date=body.wedding_date,
                days_until=body.days_until, status=body.status,
+               wedding_date_iso=body.wedding_date_iso,
                garment=body.garment, garment_style=body.garment_style,
                measurements_date=body.measurements_date,
                phone=body.phone, email=body.email, notes=body.notes)
