@@ -10,10 +10,11 @@ import { FabricsScreen } from './screens/FabricsScreen';
 import { ShoppingScreen } from './screens/ShoppingScreen';
 import { NewClientScreen } from './screens/NewClientScreen';
 import { RoadmapScreen } from './screens/RoadmapScreen';
+import { IntakeDemoScreen } from './screens/IntakeDemoScreen';
 import { api } from './api';
 import { BriefPage } from './pages/BriefPage';
 
-type Screen = 'clients' | 'profile' | 'fabrics' | 'shop' | 'roadmap';
+type Screen = 'clients' | 'profile' | 'fabrics' | 'shop' | 'roadmap' | 'intake';
 
 export default function App() {
   const pathname = window.location.pathname;
@@ -65,6 +66,13 @@ function AtelierApp() {
       {screen === 'fabrics'  && <FabricsScreen clients={clients} onRefresh={refresh} />}
       {screen === 'shop'     && <ShoppingScreen clients={clients} />}
       {screen === 'roadmap'  && <RoadmapScreen clients={clients} onRefresh={refresh} />}
+      {screen === 'intake' && (
+        <IntakeDemoScreen
+          onClientCreated={id => {
+            refresh().then(() => openClient(id));
+          }}
+        />
+      )}
     </>
   );
 
