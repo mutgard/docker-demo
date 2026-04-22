@@ -3,7 +3,7 @@ import type { Client, AtelierEvent } from '../types';
 import { api } from '../api';
 import { T, fabricVariant } from '../tokens';
 import { useIsMobile } from '../hooks/useIsMobile';
-import { Label, Mono, Serif, Badge, Swatch, Checkbox } from '../components/primitives';
+import { Label, Mono, Serif, Swatch, Checkbox } from '../components/primitives';
 import { initials, parsePayments } from '../lib/clientHelpers';
 import { IntakeTab } from '../components/IntakeTab';
 import { EventList } from '../components/EventList';
@@ -105,6 +105,23 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
   };
 
   const cancelEdit = () => setEditing(false);
+
+  const PIPELINE: { value: import('../types').ClientStatus; label: string }[] = [
+    { value: 'prospect',   label: 'Prospect' },
+    { value: 'sense-paga', label: 'Sense paga' },
+    { value: 'clienta',    label: 'Clienta' },
+    { value: 'entregada',  label: 'Entregada' },
+  ];
+  const currentIdx = PIPELINE.findIndex(s => s.value === c.status);
+  const nextStage = currentIdx < PIPELINE.length - 1 ? PIPELINE[currentIdx + 1] : null;
+
+  const advanceStatus = async () => {
+    if (!nextStage) return;
+    await api.patchClient(c.id, { status: nextStage.value });
+    const updated = await api.getClient(c.id);
+    setC(updated);
+    onRefresh();
+  };
 
   const startEditPayment = (p: { id: number; label: string; value: string }) => {
     setEditingPaymentId(p.id);
@@ -237,8 +254,8 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
           ) : (
             <Serif size={mobile ? 32 : 40} italic>{c.name}</Serif>
           )}
-          <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            {editing ? (
+          {editing ? (
+            <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <select
                 value={draft.status}
                 onChange={e => setDraft(d => ({ ...d, status: e.target.value as import('../types').ClientStatus }))}
@@ -255,15 +272,65 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
                   <option key={s} value={s}>{s}</option>
                 ))}
               </select>
-            ) : (
-              <Badge status={c.status} />
-            )}
-            {!editing && clientEvents.length > 0 && (
-              <Mono size={10} color={T.ink3}>
-                {clientEvents[0].title} · {clientEvents[0].date}
-              </Mono>
-            )}
-          </div>
+            </div>
+          ) : (
+            <div style={{ marginTop: 10 }}>
+              {/* Pipeline strip */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 0, flexWrap: 'wrap', rowGap: 4 }}>
+                {PIPELINE.map((stage, i) => {
+                  const isCurrent = i === currentIdx;
+                  const isPast = i < currentIdx;
+                  const isLast = i === PIPELINE.length - 1;
+                  return (
+                    <div key={stage.value} style={{ display: 'flex', alignItems: 'center' }}>
+                      <div style={{
+                        padding: '3px 10px',
+                        border: `1px ${isCurrent ? 'solid' : isPast ? 'solid' : 'dashed'} ${isCurrent ? T.accent : isPast ? T.hairline2 : T.hairline}`,
+                        background: isCurrent ? T.accent : 'transparent',
+                        color: isCurrent ? T.paper : T.ink3,
+                        fontFamily: T.mono, fontSize: 9, letterSpacing: 0.8, textTransform: 'uppercase',
+                        whiteSpace: 'nowrap',
+                        opacity: isPast ? 0.5 : 1,
+                      }}>
+                        {isPast ? '✓ ' : ''}{stage.label}
+                      </div>
+                      {!isLast && (
+                        <div style={{ width: 12, height: 1, background: T.hairline, flexShrink: 0 }} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Next-stage action button */}
+              {nextStage && (
+                <button
+                  onClick={advanceStatus}
+                  style={{
+                    marginTop: 10,
+                    padding: '6px 14px',
+                    background: 'transparent',
+                    border: `1px solid ${T.ink}`,
+                    color: T.ink,
+                    fontFamily: T.mono, fontSize: 9, letterSpacing: 0.8,
+                    textTransform: 'uppercase', cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                  }}
+                >
+                  Avançar → {nextStage.label}
+                </button>
+              )}
+
+              {/* Subtitle: upcoming event */}
+              {clientEvents.length > 0 && (
+                <div style={{ marginTop: 6 }}>
+                  <Mono size={10} color={T.ink3}>
+                    {clientEvents[0].title} · {clientEvents[0].date}
+                  </Mono>
+                </div>
+              )}
+            </div>
+          )}
           {editing ? (
             <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
               <input value={draft.phone} onChange={e => setDraft(d => ({ ...d, phone: e.target.value }))}
