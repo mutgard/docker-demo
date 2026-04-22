@@ -21,7 +21,7 @@ class ClientCreate(BaseModel):
     name: str
     wedding_date: str
     days_until: int
-    wedding_date_iso: str = ""
+    wedding_date_iso: Optional[str] = None
     status: str
     garment: str = ""
     garment_style: str = ""
@@ -45,3 +45,29 @@ class ClientPatch(BaseModel):
     measurements_date: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
+
+class AppointmentCreate(BaseModel):
+    client_id: Optional[int] = None
+    title: str
+    date: str                          # ISO YYYY-MM-DD
+    order_id: Optional[str] = None
+
+class AppointmentPatch(BaseModel):
+    title: Optional[str] = None
+    date: Optional[str] = None
+    order_id: Optional[str] = None
+    client_id: Optional[int] = None
+
+class DeliveryCreate(BaseModel):
+    client_id: Optional[int] = None
+    supplier: str
+    description: str
+    expected_date: str                 # ISO YYYY-MM-DD
+    received: bool = False
+
+class DeliveryPatch(BaseModel):
+    client_id: Optional[int] = None
+    supplier: Optional[str] = None
+    description: Optional[str] = None
+    expected_date: Optional[str] = None
+    received: Optional[bool] = None

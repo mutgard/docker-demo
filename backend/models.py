@@ -24,6 +24,7 @@ class Client(SQLModel, table=True):
     fabrics: List["Fabric"] = Relationship(back_populates="client")
     appointments: List["Appointment"] = Relationship(back_populates="client")
     payments: List["Payment"] = Relationship(back_populates="client")
+    deliveries: List["Delivery"] = Relationship(back_populates="client")
 
     @validator("status")
     @classmethod
@@ -59,6 +60,9 @@ class Appointment(SQLModel, table=True):
     client_id: Optional[int] = Field(default=None, foreign_key="client.id")
     label: str
     value: str
+    date: Optional[str] = None       # ISO YYYY-MM-DD — roadmap field
+    title: Optional[str] = None      # display title — roadmap field
+    order_id: Optional[str] = None   # e.g. "ORD-2026-001"
     client: Optional[Client] = Relationship(back_populates="appointments")
 
 class Payment(SQLModel, table=True):
@@ -67,3 +71,12 @@ class Payment(SQLModel, table=True):
     label: str
     value: str
     client: Optional[Client] = Relationship(back_populates="payments")
+
+class Delivery(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    client_id: Optional[int] = Field(default=None, foreign_key="client.id")
+    supplier: str
+    description: str
+    expected_date: str               # ISO YYYY-MM-DD
+    received: bool = False
+    client: Optional[Client] = Relationship(back_populates="deliveries")
