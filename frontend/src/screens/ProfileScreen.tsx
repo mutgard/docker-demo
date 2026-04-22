@@ -392,10 +392,24 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
         />
 
         {/* Notes */}
-        {c.notes && (
+        {(editing || c.notes) && (
           <div style={{ marginBottom: 24 }}>
             <Label style={{ marginBottom: 8 }}>Notes</Label>
-            <div style={{ fontFamily: T.sans, fontSize: 13, color: T.ink2, lineHeight: 1.65 }}>{c.notes}</div>
+            {editing ? (
+              <textarea
+                value={draft.notes}
+                onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))}
+                placeholder="Notes sobre la clienta…"
+                rows={4}
+                style={{
+                  width: '100%', border: `1px solid ${T.hairline}`, background: 'transparent',
+                  outline: 'none', fontFamily: T.sans, fontSize: 13, color: T.ink,
+                  lineHeight: 1.65, padding: '8px', resize: 'vertical', boxSizing: 'border-box' as const,
+                }}
+              />
+            ) : (
+              <div style={{ fontFamily: T.sans, fontSize: 13, color: T.ink2, lineHeight: 1.65 }}>{c.notes}</div>
+            )}
           </div>
         )}
         {saveError && (
