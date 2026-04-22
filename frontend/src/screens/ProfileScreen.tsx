@@ -283,7 +283,18 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
       <div style={{ flex: 1, overflow: 'auto', padding: `${mobile ? 20 : 28}px ${px}px 40px`, display: tab === 'fitxa' ? 'block' : 'none' }}>
 
         {/* Countdown card */}
-        {c.status !== 'entregada' && (
+        {editing && (
+          <div style={{ marginBottom: 16 }}>
+            <Label style={{ marginBottom: 8 }}>Data de boda</Label>
+            <input
+              type="date"
+              value={draft.wedding_date_iso}
+              onChange={e => setDraft(d => ({ ...d, wedding_date_iso: e.target.value }))}
+              style={{ ...fieldInput, fontFamily: T.mono, fontSize: 13, color: T.ink, padding: '6px 0', width: '100%' }}
+            />
+          </div>
+        )}
+        {!editing && c.status !== 'entregada' && (
           <div style={{ background: T.ink, color: T.paper, padding: '18px 22px', marginBottom: 24 }}>
             <Label style={{ color: 'rgba(246,241,232,0.55)', marginBottom: 8 }}>Compte enrere · Boda</Label>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -324,12 +335,30 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
         <div style={{ marginBottom: 24 }}>
           <Label style={{ marginBottom: 10 }}>Peça</Label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {([['Tipus', c.garment], ['Estil', c.garment_style], ['Data mides', c.measurements_date]] as [string, string][]).map(([k, v]) => v ? (
-              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${T.hairline}` }}>
-                <Mono size={10} color={T.ink3}>{k}</Mono>
-                <Mono size={10} color={T.ink}>{v}</Mono>
+            {([
+              ['Tipus', 'garment', c.garment],
+              ['Estil', 'garment_style', c.garment_style],
+            ] as [string, 'garment' | 'garment_style', string][]).map(([label, key, val]) => (
+              <div key={key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: `1px solid ${T.hairline}` }}>
+                <Mono size={10} color={T.ink3}>{label}</Mono>
+                {editing ? (
+                  <input
+                    value={draft[key]}
+                    onChange={e => setDraft(d => ({ ...d, [key]: e.target.value }))}
+                    placeholder="—"
+                    style={{ border: 'none', background: 'transparent', outline: 'none', fontFamily: T.mono, fontSize: 10, color: T.ink, textAlign: 'right', width: '60%' }}
+                  />
+                ) : (
+                  val ? <Mono size={10} color={T.ink}>{val}</Mono> : null
+                )}
               </div>
-            ) : null)}
+            ))}
+            {!editing && c.measurements_date && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${T.hairline}` }}>
+                <Mono size={10} color={T.ink3}>Data mides</Mono>
+                <Mono size={10} color={T.ink}>{c.measurements_date}</Mono>
+              </div>
+            )}
           </div>
         </div>
 
