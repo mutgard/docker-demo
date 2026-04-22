@@ -9,10 +9,11 @@ import { ProfileScreen } from './screens/ProfileScreen';
 import { FabricsScreen } from './screens/FabricsScreen';
 import { ShoppingScreen } from './screens/ShoppingScreen';
 import { NewClientScreen } from './screens/NewClientScreen';
+import { RoadmapScreen } from './screens/RoadmapScreen';
 import { api } from './api';
 import { BriefPage } from './pages/BriefPage';
 
-type Screen = 'clients' | 'profile' | 'fabrics' | 'shop';
+type Screen = 'clients' | 'profile' | 'fabrics' | 'shop' | 'roadmap';
 
 export default function App() {
   const pathname = window.location.pathname;
@@ -30,7 +31,9 @@ function AtelierApp() {
   const [clients, setClients] = useState<Client[]>([]);
   const [creating, setCreating] = useState(false);
 
-  useEffect(() => { api.listClients().then(setClients); }, []);
+  const refresh = () => api.listClients().then(setClients);
+
+  useEffect(() => { refresh(); }, []);
 
   const fabricsToBuy = clients.flatMap(c => c.fabrics).filter(f => f.to_buy).length;
   const totalFabrics = clients.flatMap(c => c.fabrics).length;
@@ -38,7 +41,6 @@ function AtelierApp() {
   const nav = (s: Screen) => { setScreen(s); setCreating(false); if (s !== 'profile') setClientId(null); };
   const openClient = (id: number) => { setClientId(id); setScreen('profile'); };
   const back = () => { setScreen('clients'); setClientId(null); };
-  const refresh = () => api.listClients().then(setClients);
 
   const handleCreateSuccess = (id: number) => {
     setCreating(false);
@@ -57,10 +59,12 @@ function AtelierApp() {
           onBack={back}
           onOpenFabrics={() => nav('fabrics')}
           onRefresh={refresh}
+          allClients={clients}
         />
       )}
-      {screen === 'fabrics' && <FabricsScreen clients={clients} onRefresh={refresh} />}
-      {screen === 'shop'    && <ShoppingScreen clients={clients} />}
+      {screen === 'fabrics'  && <FabricsScreen clients={clients} onRefresh={refresh} />}
+      {screen === 'shop'     && <ShoppingScreen clients={clients} />}
+      {screen === 'roadmap'  && <RoadmapScreen clients={clients} onRefresh={refresh} />}
     </>
   );
 

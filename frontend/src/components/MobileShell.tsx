@@ -1,6 +1,6 @@
 import { T } from '../tokens';
 
-type Screen = 'clients' | 'profile' | 'fabrics' | 'shop';
+type Screen = 'clients' | 'profile' | 'fabrics' | 'shop' | 'roadmap';
 
 /**
  * Single compact header: brand row + tab strip.
@@ -15,6 +15,7 @@ export function MobileHeader({ active, onNav, fabricsToBuy }: {
     { id: 'clients', n: '01', label: 'Clientes' },
     { id: 'fabrics', n: '03', label: 'Teles' },
     { id: 'shop',    n: '04', label: 'Comprar', count: fabricsToBuy },
+    { id: 'roadmap', n: '05', label: 'Agenda' },
   ];
 
   return (

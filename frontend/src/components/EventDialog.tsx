@@ -1,0 +1,251 @@
+import { useState } from 'react';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog';
+import { T } from '../tokens';
+import { api } from '../api';
+import { Segment } from './primitives';
+import type { AtelierEvent, EventType, Client } from '../types';
+
+interface Props {
+  event?: AtelierEvent;         // undefined → create mode
+  defaultDate?: string;         // ISO pre-fill
+  defaultClientId?: number;     // locked when provided
+  clients: Client[];
+  onSuccess: () => void;
+  onClose: () => void;
+}
+
+export function EventDialog({
+  event, defaultDate, defaultClientId, clients, onSuccess, onClose,
+}: Props) {
+  const isEdit = Boolean(event);
+  const [type, setType] = useState<EventType>(event?.type ?? 'appointment');
+  const [date, setDate] = useState(event?.date ?? defaultDate ?? '');
+  const [title, setTitle] = useState(event?.title ?? '');
+  const [clientId, setClientId] = useState<number | ''>(
+    event?.client_id ?? defaultClientId ?? ''
+  );
+  const [orderId, setOrderId] = useState<string>(event?.order_id ?? '');
+  const [supplier, setSupplier] = useState<string>(event?.supplier ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const clientLocked =
+    defaultClientId !== undefined ||
+    (isEdit && event?.client_id !== null && event?.client_id !== undefined);
+
+  const validate = (): string => {
+    if (!date) return 'La data és obligatòria';
+    if (type !== 'wedding' && !title.trim()) return 'El títol és obligatori';
+    if (type === 'delivery' && !supplier.trim()) return 'El proveïdor és obligatori';
+    if (type === 'wedding' && clientId === '') return 'La clienta és obligatòria';
+    return '';
+  };
+
+  const handleSubmit = async () => {
+    const err = validate();
+    if (err) { setError(err); return; }
+    setSaving(true);
+    setError('');
+    try {
+      const cid = clientId !== '' ? (clientId as number) : null;
+      if (isEdit && event) {
+        if (type === 'appointment') {
+          await api.updateAppointment(event.id, {
+            title, date, order_id: orderId || null,
+          });
+        } else if (type === 'delivery') {
+          await api.updateDelivery(event.id, {
+            description: title, expected_date: date, supplier,
+          });
+        } else if (type === 'wedding' && cid !== null) {
+          const display = new Date(date + 'T00:00:00').toLocaleDateString(
+            'ca-ES', { day: 'numeric', month: 'short', year: 'numeric' }
+          );
+          await api.patchClient(cid, { wedding_date_iso: date, wedding_date: display });
+        }
+      } else {
+        if (type === 'appointment') {
+          await api.createAppointment({
+            title, date, client_id: cid, order_id: orderId || null,
+          });
+        } else if (type === 'delivery') {
+          await api.createDelivery({
+            supplier, description: title, expected_date: date, client_id: cid,
+          });
+        } else if (type === 'wedding' && cid !== null) {
+          const display = new Date(date + 'T00:00:00').toLocaleDateString(
+            'ca-ES', { day: 'numeric', month: 'short', year: 'numeric' }
+          );
+          await api.patchClient(cid, { wedding_date_iso: date, wedding_date: display });
+        }
+      }
+      onSuccess();
+    } catch {
+      setError('Ha ocorregut un error. Torna-ho a provar.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '8px 10px',
+    border: `1px solid ${T.hairline2}`,
+    background: T.sheet, fontFamily: T.sans, fontSize: 13, color: T.ink,
+    borderRadius: 2, outline: 'none',
+  };
+
+  const labelStyle: React.CSSProperties = {
+    fontFamily: T.mono, fontSize: 10, color: T.ink3,
+    textTransform: 'uppercase', letterSpacing: 1.2,
+    display: 'block', marginBottom: 5,
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent style={{
+        background: T.paper, border: `1px solid ${T.hairline2}`,
+        borderRadius: 2, maxWidth: 420,
+      }}>
+        <DialogHeader>
+          <DialogTitle style={{
+            fontFamily: T.serif, fontSize: 22, color: T.ink, fontWeight: 'normal',
+          }}>
+            {isEdit ? 'Editar event' : 'Nou event'}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
+
+          {/* Type selector — hidden in edit mode */}
+          {!isEdit && (
+            <div>
+              <span style={labelStyle}>Tipus</span>
+              <Segment
+                options={[
+                  ['appointment', 'Cita'],
+                  ['delivery',    'Entrega'],
+                  ['wedding',     'Boda'],
+                ]}
+                value={type}
+                onChange={(v) => {
+                  setType(v as EventType);
+                  setTitle(''); setOrderId(''); setSupplier('');
+                }}
+              />
+            </div>
+          )}
+
+          {/* Date */}
+          <div>
+            <label style={labelStyle}>Data</label>
+            <input
+              type="date" value={date}
+              onChange={(e) => setDate(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+
+          {/* Title / Description — hidden for wedding */}
+          {type !== 'wedding' && (
+            <div>
+              <label style={labelStyle}>
+                {type === 'delivery' ? 'Descripció' : 'Títol'}
+              </label>
+              <input
+                type="text" value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder={type === 'delivery' ? 'Ex: Mikado seda 3m' : 'Ex: Primera prova'}
+                style={inputStyle}
+              />
+            </div>
+          )}
+
+          {/* Client selector */}
+          <div>
+            <label style={labelStyle}>Clienta</label>
+            {clientLocked ? (
+              <div style={{ ...inputStyle, color: T.ink2 }}>
+                {clients.find((c) => c.id === clientId)?.name ?? '—'}
+              </div>
+            ) : (
+              <select
+                value={clientId}
+                onChange={(e) =>
+                  setClientId(e.target.value !== '' ? Number(e.target.value) : '')
+                }
+                style={{ ...inputStyle, cursor: 'pointer' }}
+              >
+                <option value="">— Sense clienta —</option>
+                {clients.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          {/* Supplier — delivery only */}
+          {type === 'delivery' && (
+            <div>
+              <label style={labelStyle}>Proveïdor</label>
+              <input
+                type="text" value={supplier}
+                onChange={(e) => setSupplier(e.target.value)}
+                placeholder="Ex: Gratacós"
+                style={inputStyle}
+              />
+            </div>
+          )}
+
+          {/* Order ID — appointment only */}
+          {type === 'appointment' && (
+            <div>
+              <label style={labelStyle}>Comanda (opcional)</label>
+              <input
+                type="text" value={orderId ?? ''}
+                onChange={(e) => setOrderId(e.target.value)}
+                placeholder="Ex: ORD-2026-001"
+                style={inputStyle}
+              />
+            </div>
+          )}
+
+          {error && (
+            <div style={{ fontFamily: T.sans, fontSize: 12, color: T.accent }}>
+              {error}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter style={{ paddingTop: 16, gap: 8 }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: '8px 18px', border: `1px solid ${T.ink}`,
+              background: 'transparent', color: T.ink,
+              fontFamily: T.mono, fontSize: 11, letterSpacing: 0.8,
+              textTransform: 'uppercase', cursor: 'pointer', borderRadius: 2,
+            }}
+          >
+            Cancel·lar
+          </button>
+          <button
+            onClick={handleSubmit}
+            disabled={saving}
+            style={{
+              padding: '8px 18px', background: T.ink, color: T.paper,
+              fontFamily: T.mono, fontSize: 11, letterSpacing: 0.8,
+              textTransform: 'uppercase', borderRadius: 2,
+              cursor: saving ? 'not-allowed' : 'pointer',
+              opacity: saving ? 0.6 : 1,
+              border: 'none',
+            }}
+          >
+            {saving ? 'Guardant...' : isEdit ? 'Guardar' : 'Crear'}
+          </button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

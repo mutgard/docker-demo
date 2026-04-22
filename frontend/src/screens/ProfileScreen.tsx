@@ -1,25 +1,33 @@
 import { useState, useEffect } from 'react';
-import type { Client } from '../types';
+import type { Client, AtelierEvent } from '../types';
 import { api } from '../api';
 import { T, fabricVariant } from '../tokens';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { Label, Mono, Serif, Badge, Swatch, Checkbox } from '../components/primitives';
-import { initials, parsePayments, getNextFitting } from '../lib/clientHelpers';
+import { initials, parsePayments } from '../lib/clientHelpers';
 import { IntakeTab } from '../components/IntakeTab';
+import { EventList } from '../components/EventList';
+import { isoToday } from '../lib/calendarHelpers';
 
 interface Props {
   client: Client;
   onBack: () => void;
   onOpenFabrics: () => void;
   onRefresh: () => void;
+  allClients: Client[];
 }
 
-export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefresh }: Props) {
+export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefresh, allClients }: Props) {
   const [c, setC] = useState<Client>(initial);
   const mobile = useIsMobile();
   const [tab, setTab] = useState<'fitxa' | 'ingres'>('fitxa');
   const [briefToken, setBriefToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [clientEvents, setClientEvents] = useState<AtelierEvent[]>([]);
+
+  const fetchClientEvents = () => {
+    api.listEvents(isoToday(), '9999-12-31', c.id).then(setClientEvents);
+  };
 
   useEffect(() => {
     if (!c) return;
@@ -28,12 +36,13 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
       .catch(() => setBriefToken(null));
   }, [c?.id]);
 
+  useEffect(() => { fetchClientEvents(); }, [c.id]);
+
   if (!c) return null;
 
   const past = c.days_until < 0;
   const { priceTotal, paid } = parsePayments(c.payments);
   const pct = priceTotal && priceTotal > 0 ? Math.min(100, Math.round((paid / priceTotal) * 100)) : 0;
-  const nextFitting = getNextFitting(c.appointments);
   const px = mobile ? 20 : 40;
 
   const handleCopyLink = async () => {
@@ -86,7 +95,11 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
           <Serif size={mobile ? 32 : 40} italic>{c.name}</Serif>
           <div style={{ marginTop: 6, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
             <Badge status={c.status} />
-            {nextFitting && <Mono size={10} color={T.ink3}>{nextFitting}</Mono>}
+            {clientEvents.length > 0 && (
+              <Mono size={10} color={T.ink3}>
+                {clientEvents[0].title} · {clientEvents[0].date}
+              </Mono>
+            )}
           </div>
           {(c.phone || c.email) && (
             <div style={{ marginTop: 8, display: 'flex', gap: 16, flexWrap: 'wrap' }}>
@@ -200,18 +213,13 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
           </div>
         )}
 
-        {/* Cites */}
-        {c.appointments.length > 0 && (
-          <div style={{ marginBottom: 24 }}>
-            <Label style={{ marginBottom: 10 }}>Cites</Label>
-            {c.appointments.map((a, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '7px 0', borderBottom: `1px solid ${T.hairline}` }}>
-                <Mono size={11} color={T.ink2}>{a.label}</Mono>
-                <Mono size={11} color={T.ink}>{a.value}</Mono>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Esdeveniments */}
+        <EventList
+          events={clientEvents}
+          clients={allClients}
+          defaultClientId={c.id}
+          onRefresh={fetchClientEvents}
+        />
 
         {/* Notes */}
         {c.notes && (

@@ -26,6 +26,7 @@ export interface Client {
   id: number;
   name: string;
   wedding_date: string;
+  wedding_date_iso?: string;
   days_until: number;
   status: ClientStatus;
   garment: string;
