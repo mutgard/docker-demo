@@ -107,3 +107,32 @@ export interface ClientBrief {
   style: string;
   fabric_notes: string;
 }
+
+export type EventType = 'appointment' | 'delivery' | 'wedding';
+
+export interface AtelierEvent {
+  id: number;
+  type: EventType;
+  date: string;                  // YYYY-MM-DD
+  title: string;
+  client_id: number | null;
+  client_name: string | null;
+  order_id?: string | null;
+  supplier?: string | null;
+  received?: boolean | null;
+}
+
+export interface AppointmentCreate {
+  client_id: number | null;
+  title: string;
+  date: string;
+  order_id?: string | null;
+}
+
+export interface DeliveryCreate {
+  client_id: number | null;
+  supplier: string;
+  description: string;
+  expected_date: string;
+  received?: boolean;
+}
