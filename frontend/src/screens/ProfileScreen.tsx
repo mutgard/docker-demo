@@ -25,6 +25,10 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
   const [copied, setCopied] = useState(false);
   const [clientEvents, setClientEvents] = useState<AtelierEvent[]>([]);
   const [editing, setEditing] = useState(false);
+  const [editingPaymentId, setEditingPaymentId] = useState<number | null>(null);
+  const [paymentDraft, setPaymentDraft] = useState({ label: '', value: '' });
+  const [addingPayment, setAddingPayment] = useState(false);
+  const [newPayment, setNewPayment] = useState({ label: '', value: '' });
   const [saveError, setSaveError] = useState('');
   const [draft, setDraft] = useState({
     name: c.name,
@@ -101,6 +105,33 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
   };
 
   const cancelEdit = () => setEditing(false);
+
+  const startEditPayment = (p: { id: number; label: string; value: string }) => {
+    setEditingPaymentId(p.id);
+    setPaymentDraft({ label: p.label, value: p.value });
+  };
+
+  const savePayment = async (id: number) => {
+    await api.updatePayment(id, paymentDraft);
+    const updated = await api.getClient(c.id);
+    setC(updated);
+    setEditingPaymentId(null);
+  };
+
+  const deletePayment = async (id: number) => {
+    await api.deletePayment(id);
+    const updated = await api.getClient(c.id);
+    setC(updated);
+  };
+
+  const addPayment = async () => {
+    if (!newPayment.label.trim() || !newPayment.value.trim()) return;
+    await api.createPayment({ client_id: c.id, label: newPayment.label, value: newPayment.value });
+    const updated = await api.getClient(c.id);
+    setC(updated);
+    setAddingPayment(false);
+    setNewPayment({ label: '', value: '' });
+  };
 
   const saveEdit = async () => {
     setSaveError('');
@@ -311,22 +342,74 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
         )}
 
         {/* Payment progress */}
-        {priceTotal !== null && (
+        {(priceTotal !== null || c.payments.length === 0) && (
           <div style={{ marginBottom: 24 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
               <Label>Pagaments</Label>
-              <Mono size={10}>{paid > 0 ? `€${paid.toLocaleString()}` : '—'} / {priceTotal > 0 ? `€${priceTotal.toLocaleString()}` : '—'}</Mono>
+              <Mono size={10}>{paid > 0 ? `€${paid.toLocaleString()}` : '—'} / {priceTotal !== null && priceTotal > 0 ? `€${priceTotal.toLocaleString()}` : '—'}</Mono>
             </div>
-            <div style={{ height: 4, background: T.hairline, borderRadius: 2 }}>
-              <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? T.accent : T.gold, borderRadius: 2 }} />
-            </div>
+            {priceTotal !== null && (
+              <div style={{ height: 4, background: T.hairline, borderRadius: 2 }}>
+                <div style={{ height: '100%', width: `${pct}%`, background: pct >= 100 ? T.accent : T.gold, borderRadius: 2 }} />
+              </div>
+            )}
             <div style={{ marginTop: 8 }}>
               {c.payments.map((p, i) => (
-                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '5px 0', borderBottom: i < c.payments.length - 1 ? `1px solid ${T.hairline}` : 'none' }}>
-                  <Mono size={10} color={T.ink3}>{p.label}</Mono>
-                  <Mono size={10} color={T.ink}>{p.value}</Mono>
+                <div key={p.id} style={{ borderBottom: i < c.payments.length - 1 ? `1px solid ${T.hairline}` : 'none' }}>
+                  {editingPaymentId === p.id ? (
+                    <div style={{ display: 'flex', gap: 8, padding: '6px 0', alignItems: 'center' }}>
+                      <input
+                        value={paymentDraft.label}
+                        onChange={e => setPaymentDraft(d => ({ ...d, label: e.target.value }))}
+                        style={{ flex: 1, border: 'none', borderBottom: `1px solid ${T.hairline2}`, background: 'transparent', outline: 'none', fontFamily: T.mono, fontSize: 10, color: T.ink }}
+                      />
+                      <input
+                        value={paymentDraft.value}
+                        onChange={e => setPaymentDraft(d => ({ ...d, value: e.target.value }))}
+                        style={{ flex: 1, border: 'none', borderBottom: `1px solid ${T.hairline2}`, background: 'transparent', outline: 'none', fontFamily: T.mono, fontSize: 10, color: T.ink, textAlign: 'right' }}
+                      />
+                      <button onClick={() => savePayment(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: T.mono, fontSize: 9, color: T.accent, padding: 0, letterSpacing: 0.6 }}>✓</button>
+                      <button onClick={() => setEditingPaymentId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: T.mono, fontSize: 9, color: T.ink3, padding: 0, letterSpacing: 0.6 }}>✕</button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0' }}>
+                      <Mono size={10} color={T.ink3}>{p.label}</Mono>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <Mono size={10} color={T.ink}>{p.value}</Mono>
+                        <button onClick={() => startEditPayment(p)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: T.mono, fontSize: 9, color: T.ink3, padding: 0, opacity: 0.6 }}>Editar</button>
+                        <button onClick={() => deletePayment(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: T.mono, fontSize: 9, color: T.accent, padding: 0, opacity: 0.7 }}>✕</button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
+
+              {/* Add payment row */}
+              {addingPayment ? (
+                <div style={{ display: 'flex', gap: 8, padding: '8px 0', alignItems: 'center', borderTop: `1px solid ${T.hairline}`, marginTop: 4 }}>
+                  <input
+                    value={newPayment.label}
+                    onChange={e => setNewPayment(d => ({ ...d, label: e.target.value }))}
+                    placeholder="Concepte"
+                    style={{ flex: 1, border: 'none', borderBottom: `1px solid ${T.hairline2}`, background: 'transparent', outline: 'none', fontFamily: T.mono, fontSize: 10, color: T.ink, padding: '2px 0' }}
+                  />
+                  <input
+                    value={newPayment.value}
+                    onChange={e => setNewPayment(d => ({ ...d, value: e.target.value }))}
+                    placeholder="€500 rebut"
+                    style={{ flex: 1, border: 'none', borderBottom: `1px solid ${T.hairline2}`, background: 'transparent', outline: 'none', fontFamily: T.mono, fontSize: 10, color: T.ink, textAlign: 'right', padding: '2px 0' }}
+                  />
+                  <button onClick={addPayment} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: T.mono, fontSize: 9, color: T.accent, padding: 0, letterSpacing: 0.6 }}>+ Afegir</button>
+                  <button onClick={() => { setAddingPayment(false); setNewPayment({ label: '', value: '' }); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: T.mono, fontSize: 9, color: T.ink3, padding: 0 }}>✕</button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setAddingPayment(true)}
+                  style={{ marginTop: 8, background: 'none', border: 'none', cursor: 'pointer', fontFamily: T.mono, fontSize: 9, letterSpacing: 0.8, textTransform: 'uppercase', color: T.ink3, padding: 0, display: 'block' }}
+                >
+                  + Pagament
+                </button>
+              )}
             </div>
           </div>
         )}
