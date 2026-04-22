@@ -1,6 +1,6 @@
 import { T } from '../tokens';
 
-type Screen = 'clients' | 'profile' | 'fabrics' | 'shop' | 'roadmap' | 'intake';
+type Screen = 'clients' | 'profile' | 'fabrics' | 'shop' | 'roadmap' | 'intake' | 'finances';
 
 /**
  * Single compact header: brand row + tab strip.
@@ -16,7 +16,8 @@ export function MobileHeader({ active, onNav, fabricsToBuy }: {
     { id: 'fabrics', n: '03', label: 'Teles' },
     { id: 'shop',    n: '04', label: 'Comprar', count: fabricsToBuy },
     { id: 'roadmap', n: '05', label: 'Agenda' },
-    { id: 'intake',  n: '06', label: 'Ingrés' },
+    { id: 'intake',   n: '06', label: 'Ingrés' },
+    { id: 'finances', n: '07', label: 'Finances' },
   ];
 
   return (

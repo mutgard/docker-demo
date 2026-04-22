@@ -11,10 +11,11 @@ import { ShoppingScreen } from './screens/ShoppingScreen';
 import { NewClientScreen } from './screens/NewClientScreen';
 import { RoadmapScreen } from './screens/RoadmapScreen';
 import { IntakeDemoScreen } from './screens/IntakeDemoScreen';
+import { FinancesScreen } from './screens/FinancesScreen';
 import { api } from './api';
 import { BriefPage } from './pages/BriefPage';
 
-type Screen = 'clients' | 'profile' | 'fabrics' | 'shop' | 'roadmap' | 'intake';
+type Screen = 'clients' | 'profile' | 'fabrics' | 'shop' | 'roadmap' | 'intake' | 'finances';
 
 export default function App() {
   const pathname = window.location.pathname;
@@ -72,6 +73,9 @@ function AtelierApp() {
             refresh().then(() => openClient(id));
           }}
         />
+      )}
+      {screen === 'finances' && (
+        <FinancesScreen clients={clients} onOpen={openClient} />
       )}
     </>
   );

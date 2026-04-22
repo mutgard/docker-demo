@@ -1,7 +1,7 @@
 import { T } from '../tokens';
 import { Label, Mono } from './primitives';
 
-type Screen = 'clients' | 'profile' | 'fabrics' | 'shop' | 'roadmap' | 'intake';
+type Screen = 'clients' | 'profile' | 'fabrics' | 'shop' | 'roadmap' | 'intake' | 'finances';
 
 interface Props {
   active: Screen;
@@ -19,6 +19,7 @@ export function Sidebar({ active, onNav, fabricsToBuy, totalClients, totalFabric
     { id: 'shop',    n: '04', label: 'Per comprar', count: fabricsToBuy, accent: true },
     { id: 'roadmap', n: '05', label: 'Agenda',      count: null },
     { id: 'intake',  n: '06', label: 'Ingrés',      count: null },
+    { id: 'finances', n: '07', label: 'Finances',   count: null },
   ];
 
   return (
