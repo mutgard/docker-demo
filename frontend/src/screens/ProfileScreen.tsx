@@ -24,6 +24,19 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
   const [briefToken, setBriefToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [clientEvents, setClientEvents] = useState<AtelierEvent[]>([]);
+  const [editing, setEditing] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [draft, setDraft] = useState({
+    name: c.name,
+    phone: c.phone,
+    email: c.email,
+    wedding_date: c.wedding_date,
+    wedding_date_iso: c.wedding_date_iso ?? '',
+    garment: c.garment,
+    garment_style: c.garment_style,
+    notes: c.notes,
+    status: c.status,
+  });
 
   const fetchClientEvents = () => {
     api.listEvents(isoToday(), '9999-12-31', c.id).then(setClientEvents);
@@ -61,6 +74,53 @@ export function ProfileScreen({ client: initial, onBack, onOpenFabrics, onRefres
     const updated = await api.getClient(c.id);
     setC(updated);
     onRefresh();
+  };
+
+  const startEdit = () => {
+    setDraft({
+      name: c.name,
+      phone: c.phone,
+      email: c.email,
+      wedding_date: c.wedding_date,
+      wedding_date_iso: c.wedding_date_iso ?? '',
+      garment: c.garment,
+      garment_style: c.garment_style,
+      notes: c.notes,
+      status: c.status,
+    });
+    setEditing(true);
+  };
+
+  const cancelEdit = () => setEditing(false);
+
+  const saveEdit = async () => {
+    setSaveError('');
+    try {
+      const days = draft.wedding_date_iso
+        ? Math.round((new Date(draft.wedding_date_iso).getTime() - Date.now()) / 86400000)
+        : c.days_until;
+      const wedding_date = draft.wedding_date_iso
+        ? (() => { const [y, m, d] = draft.wedding_date_iso.split('-'); return `${d}.${m}.${y}`; })()
+        : c.wedding_date;
+      await api.patchClient(c.id, {
+        name: draft.name,
+        phone: draft.phone,
+        email: draft.email,
+        wedding_date,
+        wedding_date_iso: draft.wedding_date_iso || undefined,
+        days_until: days,
+        garment: draft.garment,
+        garment_style: draft.garment_style,
+        notes: draft.notes,
+        status: draft.status,
+      });
+      const updated = await api.getClient(c.id);
+      setC(updated);
+      onRefresh();
+      setEditing(false);
+    } catch {
+      setSaveError('Error en guardar. Torna-ho a provar.');
+    }
   };
 
   return (
