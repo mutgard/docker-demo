@@ -69,8 +69,8 @@ function AtelierApp() {
       {screen === 'roadmap'  && <RoadmapScreen clients={clients} onRefresh={refresh} />}
       {screen === 'intake' && (
         <IntakeDemoScreen
-          onClientCreated={id => {
-            refresh().then(() => openClient(id));
+          onClientCreated={() => {
+            refresh().then(() => nav('clients'));
           }}
         />
       )}

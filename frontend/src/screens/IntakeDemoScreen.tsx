@@ -6,7 +6,7 @@ import { Label, Mono, Serif } from '../components/primitives';
 import { useIsMobile } from '../hooks/useIsMobile';
 
 interface Props {
-  onClientCreated: (id: number) => void;
+  onClientCreated: () => void;
 }
 
 // ── WhatsApp thread column ──────────────────────────────────────────────────
@@ -111,11 +111,11 @@ function ClientCardColumn({ scenario, onClientCreated }: { scenario: DemoScenari
     try {
       const c = await api.createClient({
         name: d.name, wedding_date: d.wedding_date, wedding_date_iso: d.wedding_date_iso,
-        days_until: d.days_until, status: d.status, garment: d.garment,
+        days_until: d.days_until, status: 'prospect', garment: d.garment,
         garment_style: d.garment_style, phone: d.phone, email: d.email, notes: d.notes,
       });
       setCreated(true);
-      setTimeout(() => onClientCreated(c.id), 800);
+      setTimeout(() => onClientCreated(), 800);
     } catch {
       setError('Error en crear la clienta.');
       setCreating(false);
@@ -160,7 +160,7 @@ function ClientCardColumn({ scenario, onClientCreated }: { scenario: DemoScenari
           textTransform: 'uppercase', cursor: creating || created ? 'not-allowed' : 'pointer',
         }}
       >
-        {created ? 'Clienta creada ✓' : creating ? 'Creant…' : 'Crear clienta'}
+        {created ? 'Prospect afegida ✓' : creating ? 'Creant…' : 'Afegir com a prospect'}
       </button>
     </div>
   );
